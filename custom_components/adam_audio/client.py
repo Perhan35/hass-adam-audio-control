@@ -1,5 +1,5 @@
 """
-Async-safe client wrapper around the pacontrol Device.
+Async-safe client wrapper around the AES70/OCA Device layer.
 
 All blocking socket I/O runs in HA's executor thread pool so the event loop
 is never blocked.  A single asyncio.Lock serialises all access so commands
@@ -25,7 +25,7 @@ from typing import Callable
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
-from .pacontrol.device import Device
+from .oca_device import Device
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -179,11 +179,6 @@ class AdamAudioClient:
     async def async_set_voicing(self, value: int) -> None:
         await self._async_send(self._device.set_voicing, value)
         self.state.voicing = value
-
-    async def async_set_volume(self, db_value: float) -> None:
-        raw = int(round(db_value * 2))
-        await self._async_send(self._device.set_level, raw)
-        self.state.volume = db_value
 
     async def async_set_bass(self, value: int) -> None:
         await self._async_send(self._device.set_bass, value)

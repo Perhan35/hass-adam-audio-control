@@ -7,6 +7,7 @@ config-entry loads skip it because the unique_id is already registered.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -126,13 +127,21 @@ class AdamAudioGroupMuteSwitch(AdamAudioGroupEntity, SwitchEntity):
         return any(c.client.state.mute for c in coordinators)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        for coordinator in self._coordinators():
-            await coordinator.client.async_set_mute(True)
+        coordinators = self._coordinators()
+        await asyncio.gather(*(
+            c.client.async_set_mute(True) for c in coordinators
+        ))
+        for c in coordinators:
+            c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        for coordinator in self._coordinators():
-            await coordinator.client.async_set_mute(False)
+        coordinators = self._coordinators()
+        await asyncio.gather(*(
+            c.client.async_set_mute(False) for c in coordinators
+        ))
+        for c in coordinators:
+            c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()
 
 
@@ -154,11 +163,19 @@ class AdamAudioGroupSleepSwitch(AdamAudioGroupEntity, SwitchEntity):
         return any(c.client.state.sleep for c in coordinators)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        for coordinator in self._coordinators():
-            await coordinator.client.async_set_sleep(True)
+        coordinators = self._coordinators()
+        await asyncio.gather(*(
+            c.client.async_set_sleep(True) for c in coordinators
+        ))
+        for c in coordinators:
+            c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        for coordinator in self._coordinators():
-            await coordinator.client.async_set_sleep(False)
+        coordinators = self._coordinators()
+        await asyncio.gather(*(
+            c.client.async_set_sleep(False) for c in coordinators
+        ))
+        for c in coordinators:
+            c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()

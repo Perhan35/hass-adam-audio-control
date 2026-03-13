@@ -1,5 +1,5 @@
-"""
-AES70/OCA device abstraction.
+"""AES70/OCA device abstraction.
+
 Extended from the original pacontrol library by dmach
 (https://github.com/dmach/pacontrol) to support direct IP/port construction
 and socket lifecycle management required for long-running integrations.
@@ -12,11 +12,11 @@ import struct
 from types import SimpleNamespace
 from typing import List
 
-from .command import Command
-from .keepalive import Keepalive
-from .message import Message
-from .response import Response
-from .types import OcaInt8, OcaString, OcaUint16, PDU
+from .oca_command import Command
+from .oca_keepalive import Keepalive
+from .oca_message import Message
+from .oca_response import Response
+from .oca_types import OcaInt8, OcaString, OcaUint16, PDU
 
 
 class Device:

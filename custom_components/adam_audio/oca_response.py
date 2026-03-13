@@ -1,9 +1,12 @@
-"""AES70/OCA response PDU."""
+"""AES70/OCA response PDU.
+
+Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
+"""
 import io
 from typing import BinaryIO, List
 
-from .types import OcaType, PDU
-from .util import unpack_from_stream
+from .oca_types import OcaType, PDU
+from .oca_util import unpack_from_stream
 
 
 class Response(PDU):

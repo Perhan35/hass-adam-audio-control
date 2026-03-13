@@ -6,6 +6,7 @@ for each is created once.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from homeassistant.components.select import SelectEntity
@@ -121,8 +122,12 @@ class AdamAudioGroupInputSelect(AdamAudioGroupEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         value = INPUT_TO_INT[option]
-        for coordinator in self._coordinators():
-            await coordinator.client.async_set_input(value)
+        coordinators = self._coordinators()
+        await asyncio.gather(*(
+            c.client.async_set_input(value) for c in coordinators
+        ))
+        for c in coordinators:
+            c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()
 
 
@@ -145,6 +150,10 @@ class AdamAudioGroupVoicingSelect(AdamAudioGroupEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         value = VOICING_TO_INT[option]
-        for coordinator in self._coordinators():
-            await coordinator.client.async_set_voicing(value)
+        coordinators = self._coordinators()
+        await asyncio.gather(*(
+            c.client.async_set_voicing(value) for c in coordinators
+        ))
+        for c in coordinators:
+            c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()

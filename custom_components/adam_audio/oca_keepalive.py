@@ -1,9 +1,12 @@
-"""AES70/OCA keepalive PDU."""
+"""AES70/OCA keepalive PDU.
+
+Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
+"""
 import struct
 from typing import BinaryIO
 
-from .types import PDU
-from .util import unpack_from_stream
+from .oca_types import PDU
+from .oca_util import unpack_from_stream
 
 
 class Keepalive(PDU):

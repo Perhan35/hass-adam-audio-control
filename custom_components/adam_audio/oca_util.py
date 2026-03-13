@@ -1,4 +1,7 @@
-"""Utility helpers for the pacontrol protocol library."""
+"""Utility helpers for the AES70/OCA protocol layer.
+
+Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
+"""
 import struct
 from typing import BinaryIO
 

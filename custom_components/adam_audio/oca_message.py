@@ -1,8 +1,11 @@
-"""AES70/OCA message envelope."""
+"""AES70/OCA message envelope.
+
+Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
+"""
 import struct
 from typing import BinaryIO
 
-from .util import unpack_from_stream
+from .oca_util import unpack_from_stream
 
 
 class Message:

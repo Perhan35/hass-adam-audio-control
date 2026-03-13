@@ -1,9 +1,12 @@
-"""AES70/OCA type definitions."""
+"""AES70/OCA type definitions.
+
+Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
+"""
 import abc
 import struct
 from typing import BinaryIO
 
-from .util import unpack_from_stream
+from .oca_util import unpack_from_stream
 
 
 class PDU:

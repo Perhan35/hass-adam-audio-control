@@ -1,11 +1,11 @@
 """
-Number platform for ADAM Audio — Volume and EQ controls.
+Number platform for ADAM Audio — EQ controls.
 
-Volume is exposed in dB (−20.0 ... +6.0, step 0.5).
 EQ controls (Bass, Desk, Presence, Treble) use integer dB steps.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Callable
@@ -26,7 +26,6 @@ from .const import (
     ENTITY_DESK,
     ENTITY_PRESENCE,
     ENTITY_TREBLE,
-    ENTITY_VOLUME,
     EQ_STEP,
     EQ_UNIT,
     GROUP_DEVICE_ID,
@@ -34,10 +33,6 @@ from .const import (
     PRESENCE_MIN,
     TREBLE_MAX,
     TREBLE_MIN,
-    VOLUME_MAX,
-    VOLUME_MIN,
-    VOLUME_STEP,
-    VOLUME_UNIT,
 )
 from .coordinator import AdamAudioCoordinator
 from .entity import AdamAudioEntity, AdamAudioGroupEntity
@@ -67,18 +62,6 @@ class _NumberDesc:
 
 
 _NUMBER_DESCRIPTORS: tuple[_NumberDesc, ...] = (
-    _NumberDesc(
-        key=ENTITY_VOLUME,
-        name="Volume",
-        icon="mdi:knob",
-        native_min=VOLUME_MIN,
-        native_max=VOLUME_MAX,
-        native_step=VOLUME_STEP,
-        native_unit=VOLUME_UNIT,
-        state_getter=lambda s: s.volume,
-        setter_name="async_set_volume",
-        valid_voicings=(2,),  # Ext only
-    ),
     _NumberDesc(
         key=ENTITY_BASS,
         name="Bass",
@@ -232,7 +215,11 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         if self._desc.native_step == 1.0:
             value = int(value)
-        for coordinator in self._coordinators():
-            setter = getattr(coordinator.client, self._desc.setter_name)
-            await setter(value)
+        coordinators = self._coordinators()
+        await asyncio.gather(*(
+            getattr(c.client, self._desc.setter_name)(value) for c in coordinators
+        ))
+        # Push the optimistic state to all per-speaker entities instantly
+        for c in coordinators:
+            c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()
