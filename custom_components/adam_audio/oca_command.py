@@ -2,11 +2,12 @@
 
 Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
 """
+
 import io
 import struct
-from typing import BinaryIO, List
+from typing import BinaryIO
 
-from .oca_types import OcaType, PDU
+from .oca_types import PDU, OcaType
 from .oca_util import unpack_from_stream
 
 
@@ -20,7 +21,7 @@ class Command(PDU):
         target: int,
         method_level: int,
         method_index: int,
-        method_params: List[OcaType] | None = None,
+        method_params: list[OcaType] | None = None,
     ) -> None:
         self.handle = handle
         self.target = target
@@ -29,7 +30,9 @@ class Command(PDU):
         self.method_params = method_params or []
 
     @classmethod
-    def decode(cls, stream: BinaryIO, method_params_types: List[type] | None = None) -> "Command":
+    def decode(
+        cls, stream: BinaryIO, method_params_types: list[type] | None = None
+    ) -> "Command":
         method_params_types = method_params_types or []
         (
             _encoded_length,

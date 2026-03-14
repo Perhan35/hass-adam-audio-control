@@ -1,18 +1,15 @@
-"""
-Select platform for ADAM Audio — Input Source and Voicing.
+"""Select platform for ADAM Audio — Input Source and Voicing.
 
 Each physical speaker exposes two selects; one 'All Speakers' group select
 for each is created once.
 """
+
 from __future__ import annotations
 
 import asyncio
-import logging
+from typing import TYPE_CHECKING
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     DOMAIN,
@@ -29,28 +26,36 @@ from .const import (
 from .coordinator import AdamAudioCoordinator
 from .entity import AdamAudioEntity, AdamAudioGroupEntity
 
-_LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-_GROUP_SELECTS_KEY = f"{DOMAIN}_group_selects_added"
+    from .data import AdamAudioConfigEntry
+
+# Track whether group selects have been added (module-level flag).
+_group_selects_added: bool = False
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: AdamAudioConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    coordinator: AdamAudioCoordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up the select platform."""
+    global _group_selects_added  # noqa: PLW0603
+
+    coordinator = entry.runtime_data.coordinator
 
     entities: list[SelectEntity] = [
-        AdamAudioInputSelect(coordinator),
         AdamAudioVoicingSelect(coordinator),
+        AdamAudioInputSelect(coordinator),
     ]
 
-    if not hass.data[DOMAIN].get(_GROUP_SELECTS_KEY):
-        hass.data[DOMAIN][_GROUP_SELECTS_KEY] = True
+    if not _group_selects_added:
+        _group_selects_added = True
         entities += [
-            AdamAudioGroupInputSelect(hass),
             AdamAudioGroupVoicingSelect(hass),
+            AdamAudioGroupInputSelect(hass),
         ]
 
     async_add_entities(entities)
@@ -67,14 +72,17 @@ class AdamAudioInputSelect(AdamAudioEntity, SelectEntity):
     _attr_options = INPUT_OPTIONS
 
     def __init__(self, coordinator: AdamAudioCoordinator) -> None:
+        """Initialize the input select."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{ENTITY_INPUT}"
 
     @property
     def current_option(self) -> str:
+        """Return the current input source."""
         return INPUT_FROM_INT.get(self.coordinator.client.state.input_source, "XLR")
 
     async def async_select_option(self, option: str) -> None:
+        """Set the input source."""
         await self.coordinator.client.async_set_input(INPUT_TO_INT[option])
         self.async_write_ha_state()
 
@@ -87,14 +95,19 @@ class AdamAudioVoicingSelect(AdamAudioEntity, SelectEntity):
     _attr_options = VOICING_OPTIONS
 
     def __init__(self, coordinator: AdamAudioCoordinator) -> None:
+        """Initialize the voicing select."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{ENTITY_VOICING}"
+        self._attr_unique_id = (
+            f"{DOMAIN}_{coordinator.device_unique_id}_{ENTITY_VOICING}"
+        )
 
     @property
     def current_option(self) -> str:
+        """Return the current voicing mode."""
         return VOICING_FROM_INT.get(self.coordinator.client.state.voicing, "Pure")
 
     async def async_select_option(self, option: str) -> None:
+        """Set the voicing mode."""
         await self.coordinator.client.async_set_voicing(VOICING_TO_INT[option])
         self.async_write_ha_state()
 
@@ -112,20 +125,23 @@ class AdamAudioGroupInputSelect(AdamAudioGroupEntity, SelectEntity):
 
     @property
     def current_option(self) -> str:
+        """Return the common input source, or the first speaker's value."""
         coordinators = self._coordinators()
         if not coordinators:
             return INPUT_OPTIONS[0]
-        # Show common value if all speakers agree, otherwise the first one.
         values = {c.client.state.input_source for c in coordinators}
-        raw = next(iter(values)) if len(values) == 1 else coordinators[0].client.state.input_source
+        raw = (
+            next(iter(values))
+            if len(values) == 1
+            else coordinators[0].client.state.input_source
+        )
         return INPUT_FROM_INT.get(raw, "XLR")
 
     async def async_select_option(self, option: str) -> None:
+        """Set the input source on all speakers."""
         value = INPUT_TO_INT[option]
         coordinators = self._coordinators()
-        await asyncio.gather(*(
-            c.client.async_set_input(value) for c in coordinators
-        ))
+        await asyncio.gather(*(c.client.async_set_input(value) for c in coordinators))
         for c in coordinators:
             c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()
@@ -141,19 +157,23 @@ class AdamAudioGroupVoicingSelect(AdamAudioGroupEntity, SelectEntity):
 
     @property
     def current_option(self) -> str:
+        """Return the common voicing mode, or the first speaker's value."""
         coordinators = self._coordinators()
         if not coordinators:
             return VOICING_OPTIONS[0]
         values = {c.client.state.voicing for c in coordinators}
-        raw = next(iter(values)) if len(values) == 1 else coordinators[0].client.state.voicing
+        raw = (
+            next(iter(values))
+            if len(values) == 1
+            else coordinators[0].client.state.voicing
+        )
         return VOICING_FROM_INT.get(raw, "Pure")
 
     async def async_select_option(self, option: str) -> None:
+        """Set the voicing mode on all speakers."""
         value = VOICING_TO_INT[option]
         coordinators = self._coordinators()
-        await asyncio.gather(*(
-            c.client.async_set_voicing(value) for c in coordinators
-        ))
+        await asyncio.gather(*(c.client.async_set_voicing(value) for c in coordinators))
         for c in coordinators:
             c.async_set_updated_data(c.client.state)
         self.async_write_ha_state()

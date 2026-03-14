@@ -2,6 +2,8 @@
   "name": "ADAM Audio Control",
   "description": "Home Assistant integration for ADAM Audio A-Series studio monitors via AES70/OCA over UDP.",
   "render_readme": true,
-  "homeassistant": "2024.1.0",
-  "categories": ["integration"]
+  "homeassistant": "2026.3.1",
+  "categories": [
+    "integration"
+  ]
 }

@@ -2,6 +2,7 @@
 
 Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
 """
+
 import abc
 import struct
 from typing import BinaryIO

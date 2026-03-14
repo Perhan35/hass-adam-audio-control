@@ -1,5 +1,4 @@
-"""
-Config flow for ADAM Audio.
+"""Config flow for ADAM Audio.
 
 Two entry points:
   1. Zeroconf auto-discovery  — HA detects an _oca._udp.local. service and
@@ -11,13 +10,12 @@ In both cases we attempt a real connection to the device to verify
 reachability and fetch the human-readable description ("Left", "Right", …)
 before creating the config entry.
 """
+
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.components import zeroconf
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -35,25 +33,21 @@ from .const import (
     CONF_SERIAL,
     DEFAULT_PORT,
     DOMAIN,
+    LOGGER,
 )
-
-_LOGGER = logging.getLogger(__name__)
 
 _MANUAL_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): TextSelector(),
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): NumberSelector(
-            NumberSelectorConfig(
-                min=1, max=65535, step=1, mode=NumberSelectorMode.BOX
-            )
+            NumberSelectorConfig(min=1, max=65535, step=1, mode=NumberSelectorMode.BOX)
         ),
     }
 )
 
 
 class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
-    """
-    Config flow that handles both zeroconf discovery and manual IP entry.
+    """Config flow that handles both zeroconf discovery and manual IP entry.
 
     A unique_id is set to the device's hardware name (e.g. 'ASeries-41472b')
     so that the same physical speaker is never registered twice, even if its
@@ -63,6 +57,7 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     def __init__(self) -> None:
+        """Initialize the config flow."""
         self._discovery: dict[str, Any] = {}
 
     # ── Manual entry ──────────────────────────────────────────────────────────
@@ -109,7 +104,7 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_zeroconf(
         self, discovery_info: zeroconf.ZeroconfServiceInfo
     ) -> ConfigFlowResult:
-        """Called by HA when an _oca._udp.local. service is found on the network."""
+        """Handle zeroconf discovery of an _oca._udp.local. service."""
         host: str = discovery_info.host
         port: int = discovery_info.port or DEFAULT_PORT
 
@@ -125,9 +120,7 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
 
         await self.async_set_unique_id(device_id)
         # If this device is already configured, just update its IP/port silently.
-        self._abort_if_unique_id_configured(
-            updates={CONF_HOST: host, CONF_PORT: port}
-        )
+        self._abort_if_unique_id_configured(updates={CONF_HOST: host, CONF_PORT: port})
 
         # Attempt to connect and retrieve the user-facing description.
         result = await self._async_try_connect(host, port)
@@ -178,9 +171,9 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
     async def _async_try_connect(
         self, host: str, port: int
     ) -> tuple[str, str, str] | None:
-        """
-        Open a temporary connection to verify the device is reachable and
-        retrieve (device_name, description, serial).  Returns None on failure.
+        """Open a temporary connection to verify the device is reachable.
+
+        Returns (device_name, description, serial) on success, None on failure.
         """
         client = AdamAudioClient(self.hass, host, port)
         try:
@@ -188,8 +181,10 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
             if not connected:
                 return None
             return client.device_name, client.description, client.serial
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.debug("Connection attempt to %s:%d failed: %s", host, port, err)
+        except Exception:
+            LOGGER.debug(
+                "Connection attempt to %s:%d failed", host, port, exc_info=True
+            )
             return None
         finally:
             await client.async_shutdown()

@@ -1,13 +1,18 @@
 """Constants for the ADAM Audio integration."""
 
+from logging import Logger, getLogger
+
+LOGGER: Logger = getLogger(__package__)
+
 DOMAIN = "adam_audio"
 MANUFACTURER = "ADAM Audio"
+
 DEFAULT_PORT = 49494
 SOCKET_TIMEOUT = 10.0
 
 # How often HA polls the device for current state (reflects physical knob /
 # A Control changes in HA).  Lower = more responsive, higher = less chatter.
-POLL_INTERVAL = 15          # seconds
+POLL_INTERVAL = 15  # seconds
 KEEPALIVE_TIMEOUT_SECS = 30  # OCA keepalive timeout we advertise to the device
 
 SERVICE_TYPE = "_oca._udp.local."

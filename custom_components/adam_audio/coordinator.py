@@ -1,5 +1,4 @@
-"""
-DataUpdateCoordinator for a single ADAM Audio device.
+"""DataUpdateCoordinator for a single ADAM Audio device.
 
 Update loop
 -----------
@@ -12,13 +11,12 @@ Control app are reflected in Home Assistant within one poll cycle.
 If the fetch fails (device unreachable), UpdateFailed is raised so HA marks
 all child entities as unavailable until the next successful poll.
 """
+
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -31,25 +29,30 @@ from .const import (
     CONF_PORT,
     CONF_SERIAL,
     DOMAIN,
+    LOGGER,
     MANUFACTURER,
     POLL_INTERVAL,
 )
 
-_LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+
+    from .data import AdamAudioConfigEntry
 
 
+# https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
 class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
-    """
-    Manages one ADAM Audio device.
+    """Manages one ADAM Audio device.
 
     One coordinator is created per config entry (= per physical speaker).
     The update loop runs every POLL_INTERVAL seconds and issues a full state
     poll (keepalive + all GET commands) to keep HA in sync with the device.
     """
 
-    config_entry: ConfigEntry
+    config_entry: AdamAudioConfigEntry
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: AdamAudioConfigEntry) -> None:
+        """Initialize the coordinator."""
         self.client = AdamAudioClient(
             hass,
             host=entry.data[CONF_HOST],
@@ -63,7 +66,7 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
 
         super().__init__(
             hass,
-            _LOGGER,
+            LOGGER,
             name=f"{DOMAIN}_{self.device_unique_id}",
             update_interval=timedelta(seconds=POLL_INTERVAL),
         )
@@ -71,9 +74,10 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
     # ── Public setup / teardown ───────────────────────────────────────────────
 
     async def async_setup(self) -> None:
-        """
-        Initial connection.  Raises ConfigEntryNotReady if the device cannot
-        be reached so HA retries later.
+        """Connect to the device.
+
+        Raises ConfigEntryNotReady if the device cannot be reached so HA
+        retries later.
         """
         connected = await self.client.async_setup()
         if not connected:
@@ -99,8 +103,7 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
     # ── Coordinator update callback ───────────────────────────────────────────
 
     async def _async_update_data(self) -> AdamAudioState:
-        """
-        Periodic full state fetch.
+        """Fetch current device state.
 
         Sends keepalive + all GET commands.  On success, client.state holds
         the values the device reported; entities read from there.
@@ -118,6 +121,7 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
 
     @property
     def device_info(self) -> DeviceInfo:
+        """Return device info for the device registry."""
         return DeviceInfo(
             identifiers={(DOMAIN, self.device_unique_id)},
             name=self.device_description,

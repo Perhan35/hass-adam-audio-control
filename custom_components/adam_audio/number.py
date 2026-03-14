@@ -1,21 +1,18 @@
-"""
-Number platform for ADAM Audio — EQ controls.
+"""Number platform for ADAM Audio — EQ controls.
 
 EQ controls (Bass, Desk, Presence, Treble) use integer dB steps.
 """
+
 from __future__ import annotations
 
 import asyncio
-import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
+from typing import TYPE_CHECKING
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .client import AdamAudioClient, AdamAudioState
+from .client import AdamAudioState
 from .const import (
     BASS_MAX,
     BASS_MIN,
@@ -37,9 +34,14 @@ from .const import (
 from .coordinator import AdamAudioCoordinator
 from .entity import AdamAudioEntity, AdamAudioGroupEntity
 
-_LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-_GROUP_NUMBERS_KEY = f"{DOMAIN}_group_numbers_added"
+    from .data import AdamAudioConfigEntry
+
+# Track whether group numbers have been added (module-level flag).
+_group_numbers_added: bool = False
 
 
 # ── Entity descriptors ────────────────────────────────────────────────────────
@@ -47,6 +49,8 @@ _GROUP_NUMBERS_KEY = f"{DOMAIN}_group_numbers_added"
 
 @dataclass(frozen=True)
 class _NumberDesc:
+    """Descriptor for a number entity."""
+
     key: str
     name: str
     icon: str
@@ -115,20 +119,21 @@ _NUMBER_DESCRIPTORS: tuple[_NumberDesc, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: AdamAudioConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    coordinator: AdamAudioCoordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up the number platform."""
+    global _group_numbers_added  # noqa: PLW0603
+
+    coordinator = entry.runtime_data.coordinator
 
     entities: list[NumberEntity] = [
         AdamAudioNumber(coordinator, desc) for desc in _NUMBER_DESCRIPTORS
     ]
 
-    if not hass.data[DOMAIN].get(_GROUP_NUMBERS_KEY):
-        hass.data[DOMAIN][_GROUP_NUMBERS_KEY] = True
-        entities += [
-            AdamAudioGroupNumber(hass, desc) for desc in _NUMBER_DESCRIPTORS
-        ]
+    if not _group_numbers_added:
+        _group_numbers_added = True
+        entities += [AdamAudioGroupNumber(hass, desc) for desc in _NUMBER_DESCRIPTORS]
 
     async_add_entities(entities)
 
@@ -142,6 +147,7 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
     _attr_mode = NumberMode.SLIDER
 
     def __init__(self, coordinator: AdamAudioCoordinator, desc: _NumberDesc) -> None:
+        """Initialize the number entity."""
         super().__init__(coordinator)
         self._desc = desc
         self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{desc.key}"
@@ -154,6 +160,7 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
 
     @property
     def available(self) -> bool:
+        """Return true if the entity is available and the voicing is valid."""
         if not super().available:
             return False
         if self._desc.valid_voicings is not None:
@@ -162,9 +169,11 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
 
     @property
     def native_value(self) -> float:
+        """Return the current value."""
         return self._desc.state_getter(self.coordinator.client.state)
 
     async def async_set_native_value(self, value: float) -> None:
+        """Set the value on the device."""
         setter = getattr(self.coordinator.client, self._desc.setter_name)
         # EQ controls expect int; volume expects float
         if self._desc.native_step == 1.0:
@@ -182,6 +191,7 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
     _attr_mode = NumberMode.SLIDER
 
     def __init__(self, hass: HomeAssistant, desc: _NumberDesc) -> None:
+        """Initialize the group number entity."""
         super().__init__(hass)
         self._desc = desc
         self._attr_unique_id = f"{DOMAIN}_{GROUP_DEVICE_ID}_{desc.key}"
@@ -194,6 +204,7 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
 
     @property
     def available(self) -> bool:
+        """Return true if at least one speaker supports the voicing."""
         if not super().available:
             return False
         if self._desc.valid_voicings is not None:
@@ -213,12 +224,13 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
         return round(sum(values) / len(values), 1)
 
     async def async_set_native_value(self, value: float) -> None:
+        """Set the value on all speakers."""
         if self._desc.native_step == 1.0:
             value = int(value)
         coordinators = self._coordinators()
-        await asyncio.gather(*(
-            getattr(c.client, self._desc.setter_name)(value) for c in coordinators
-        ))
+        await asyncio.gather(
+            *(getattr(c.client, self._desc.setter_name)(value) for c in coordinators)
+        )
         # Push the optimistic state to all per-speaker entities instantly
         for c in coordinators:
             c.async_set_updated_data(c.client.state)

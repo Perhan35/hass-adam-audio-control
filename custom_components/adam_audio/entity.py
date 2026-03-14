@@ -1,19 +1,17 @@
-"""
-Base entity classes for ADAM Audio.
+"""Base entity classes for ADAM Audio.
 
 Two flavours:
   AdamAudioEntity      – CoordinatorEntity bound to a single physical device.
   AdamAudioGroupEntity – Plain Entity that fans commands out to ALL devices
-                         registered in hass.data[DOMAIN] at call-time.
-                         It self-subscribes to every coordinator's update bus
-                         so the group state stays fresh.
+                         registered at call-time.  It self-subscribes to every
+                         coordinator's update bus so the group state stays fresh.
 """
+
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -22,9 +20,7 @@ from .const import DOMAIN, GROUP_DEVICE_ID, GROUP_DEVICE_NAME, MANUFACTURER
 from .coordinator import AdamAudioCoordinator
 
 if TYPE_CHECKING:
-    pass
-
-_LOGGER = logging.getLogger(__name__)
+    from homeassistant.core import HomeAssistant
 
 
 class AdamAudioEntity(CoordinatorEntity[AdamAudioCoordinator]):
@@ -33,6 +29,7 @@ class AdamAudioEntity(CoordinatorEntity[AdamAudioCoordinator]):
     _attr_has_entity_name = True
 
     def __init__(self, coordinator: AdamAudioCoordinator) -> None:
+        """Initialize the entity."""
         super().__init__(coordinator)
         self._attr_device_info = coordinator.device_info
 
@@ -43,8 +40,7 @@ class AdamAudioEntity(CoordinatorEntity[AdamAudioCoordinator]):
 
 
 class AdamAudioGroupEntity(Entity):
-    """
-    Base entity for the virtual 'All Speakers' device.
+    """Base entity for the virtual 'All Speakers' device.
 
     Commands are dispatched concurrently to every real device coordinator.
     State is derived from the collective state of all coordinators.
@@ -54,6 +50,7 @@ class AdamAudioGroupEntity(Entity):
     _attr_should_poll = False
 
     def __init__(self, hass: HomeAssistant) -> None:
+        """Initialize the group entity."""
         self._hass = hass
         self._unsub_listeners: list = []
         self._subscribed_count: int = 0
@@ -62,6 +59,7 @@ class AdamAudioGroupEntity(Entity):
 
     @property
     def device_info(self) -> DeviceInfo:
+        """Return device info for the 'All Speakers' group device."""
         return DeviceInfo(
             identifiers={(DOMAIN, GROUP_DEVICE_ID)},
             name=GROUP_DEVICE_NAME,
@@ -73,11 +71,10 @@ class AdamAudioGroupEntity(Entity):
 
     def _coordinators(self) -> list[AdamAudioCoordinator]:
         """Return all currently loaded device coordinators."""
-        return [
-            v
-            for v in self._hass.data.get(DOMAIN, {}).values()
-            if isinstance(v, AdamAudioCoordinator)
-        ]
+        # Import here to avoid circular imports
+        from . import get_coordinators  # noqa: PLC0415
+
+        return get_coordinators()
 
     # ── HA lifecycle hooks ───────────────────────────────────────────────────
 
@@ -110,6 +107,7 @@ class AdamAudioGroupEntity(Entity):
         super().async_write_ha_state()
 
     async def async_will_remove_from_hass(self) -> None:
+        """Clean up coordinator listeners."""
         for unsub in self._unsub_listeners:
             unsub()
 

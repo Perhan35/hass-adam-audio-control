@@ -2,6 +2,7 @@
 
 Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
 """
+
 import struct
 from typing import BinaryIO
 
@@ -34,7 +35,9 @@ class Message:
             pdu_count,
         ) = unpack_from_stream(cls.FORMAT, stream)
         if sync != cls.SYNC:
-            raise RuntimeError(f"Bad sync byte: expected 0x{cls.SYNC:02X}, got 0x{sync:02X}")
+            raise RuntimeError(
+                f"Bad sync byte: expected 0x{cls.SYNC:02X}, got 0x{sync:02X}"
+            )
         return cls(protocol_version, message_size, pdu_type, pdu_count)
 
     def encode(self) -> bytes:

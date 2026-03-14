@@ -4,31 +4,31 @@ Extended from the original pacontrol library by dmach
 (https://github.com/dmach/pacontrol) to support direct IP/port construction
 and socket lifecycle management required for long-running integrations.
 """
+
 from __future__ import annotations
 
 import io
 import socket
 import struct
 from types import SimpleNamespace
-from typing import List
 
 from .oca_command import Command
 from .oca_keepalive import Keepalive
 from .oca_message import Message
 from .oca_response import Response
-from .oca_types import OcaInt8, OcaString, OcaUint16, PDU
+from .oca_types import PDU, OcaInt8, OcaString, OcaUint16
 
 
 class Device:
     def __init__(self, info) -> None:
         self.info = info
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._last_response: "Response" | None = None
+        self._last_response: Response | None = None
 
     # ── Alternative constructors ─────────────────────────────────────────────
 
     @classmethod
-    def from_address(cls, host: str, port: int) -> "Device":
+    def from_address(cls, host: str, port: int) -> Device:
         """Create a Device directly from a host/port pair (no zeroconf needed)."""
         info = SimpleNamespace(
             addresses=[socket.inet_aton(host)],
@@ -69,7 +69,7 @@ class Device:
             while True:
                 # Discard up to 1024 bytes at a time until buffer is empty.
                 self.sock.recvfrom(1024)
-        except (BlockingIOError, socket.timeout, OSError):
+        except (TimeoutError, BlockingIOError, OSError):
             pass
         finally:
             self.sock.settimeout(original_timeout)
@@ -82,13 +82,13 @@ class Device:
     def receive_bytes(self) -> bytes:
         return self.sock.recvfrom(1024)[0]
 
-    def send_pdus(self, pdus: List[PDU]) -> None:
+    def send_pdus(self, pdus: list[PDU]) -> None:
         if not pdus:
             raise ValueError("List of PDUs must not be empty")
         pdu_type = pdus[0].PDU_TYPE
         encoded_pdus: bytes = b""
         for pdu in pdus:
-            if pdu.PDU_TYPE != pdu_type:
+            if pdu_type != pdu.PDU_TYPE:
                 raise ValueError("All PDUs must have the same type")
             encoded_pdus += pdu.encode()
         message = Message(
@@ -99,25 +99,29 @@ class Device:
         )
         self.send_bytes(message.encode() + encoded_pdus)
 
-    def receive_response(self, param_types: List[type] | None = None) -> Response:
+    def receive_response(self, param_types: list[type] | None = None) -> Response:
         """Receive a single Response PDU."""
         data = self.receive_bytes()
         stream = io.BytesIO(data)
         message = Message.decode(stream)
         if message.pdu_type != Response.PDU_TYPE:
-            raise ValueError(f"Expected response PDU type {Response.PDU_TYPE}, got {message.pdu_type}")
+            raise ValueError(
+                f"Expected response PDU type {Response.PDU_TYPE}, got {message.pdu_type}"
+            )
         if message.pdu_count < 1:
             raise ValueError("Expected at least 1 PDU in response")
         self._last_response = Response.decode(stream, param_types)
         return self._last_response
 
-    def receive_responses(self, expected_ptypes: List[List[type]]) -> List[Response]:
+    def receive_responses(self, expected_ptypes: list[list[type]]) -> list[Response]:
         """Receive a multi-PDU response message and return all PDUs."""
         data = self.receive_bytes()
         stream = io.BytesIO(data)
         message = Message.decode(stream)
         if message.pdu_type != Response.PDU_TYPE:
-            raise ValueError(f"Expected response PDU type {Response.PDU_TYPE}, got {message.pdu_type}")
+            raise ValueError(
+                f"Expected response PDU type {Response.PDU_TYPE}, got {message.pdu_type}"
+            )
 
         responses = []
         for i in range(message.pdu_count):
@@ -142,7 +146,7 @@ class Device:
 
     # ── Batched Polling ──────────────────────────────────────────────────────
 
-    def get_full_state_pdus(self) -> List[Response]:
+    def get_full_state_pdus(self) -> list[Response]:
         """
         Query all 9 controllable parameters sequentially.
         Each command is sent and its response received individually, because
@@ -150,15 +154,42 @@ class Device:
         Returns a list of 9 Response objects.
         """
         commands_and_types = [
-            (Command(handle=1, target=33619989, method_level=4, method_index=1), [OcaUint16]),  # mute
-            (Command(handle=2, target=50528364, method_level=4, method_index=1), [OcaUint16]),  # sleep
-            (Command(handle=3, target=16842763, method_level=4, method_index=1), [OcaUint16]),  # input
-            (Command(handle=4, target=50397289, method_level=4, method_index=1), [OcaUint16]),  # voicing
-            (Command(handle=5, target=16842754, method_level=5, method_index=1), [OcaInt8]),    # volume
-            (Command(handle=6, target=50397285, method_level=5, method_index=1), [OcaInt8]),    # bass
-            (Command(handle=7, target=50397286, method_level=5, method_index=1), [OcaInt8]),    # desk
-            (Command(handle=8, target=50397287, method_level=5, method_index=1), [OcaInt8]),    # presence
-            (Command(handle=9, target=50397288, method_level=5, method_index=1), [OcaInt8]),    # treble
+            (
+                Command(handle=1, target=33619989, method_level=4, method_index=1),
+                [OcaUint16],
+            ),  # mute
+            (
+                Command(handle=2, target=50528364, method_level=4, method_index=1),
+                [OcaUint16],
+            ),  # sleep
+            (
+                Command(handle=3, target=16842763, method_level=4, method_index=1),
+                [OcaUint16],
+            ),  # input
+            (
+                Command(handle=4, target=50397289, method_level=4, method_index=1),
+                [OcaUint16],
+            ),  # voicing
+            (
+                Command(handle=5, target=16842754, method_level=5, method_index=1),
+                [OcaInt8],
+            ),  # volume
+            (
+                Command(handle=6, target=50397285, method_level=5, method_index=1),
+                [OcaInt8],
+            ),  # bass
+            (
+                Command(handle=7, target=50397286, method_level=5, method_index=1),
+                [OcaInt8],
+            ),  # desk
+            (
+                Command(handle=8, target=50397287, method_level=5, method_index=1),
+                [OcaInt8],
+            ),  # presence
+            (
+                Command(handle=9, target=50397288, method_level=5, method_index=1),
+                [OcaInt8],
+            ),  # treble
         ]
         responses = []
         for cmd, ptypes in commands_and_types:
@@ -178,40 +209,70 @@ class Device:
         return self.receive_response([OcaString]).params[0].value
 
     def get_description(self) -> str:
-        self.send_pdus([Command(handle=0, target=50593843, method_level=5, method_index=1)])
+        self.send_pdus(
+            [Command(handle=0, target=50593843, method_level=5, method_index=1)]
+        )
         return self.receive_response([OcaString]).params[0].value
 
     def set_description(self, value: str) -> None:
-        self.send_pdus([Command(
-            handle=59, target=50593843, method_level=5, method_index=2,
-            method_params=[OcaString(value)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=59,
+                    target=50593843,
+                    method_level=5,
+                    method_index=2,
+                    method_params=[OcaString(value)],
+                )
+            ]
+        )
 
     # ── Power / routing ──────────────────────────────────────────────────────
 
     def set_sleep(self, value: bool) -> None:
         """Put device into standby (True) or wake it up (False)."""
-        self.send_pdus([Command(
-            handle=0, target=50528364, method_level=4, method_index=2,
-            method_params=[OcaUint16(int(value))],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50528364,
+                    method_level=4,
+                    method_index=2,
+                    method_params=[OcaUint16(int(value))],
+                )
+            ]
+        )
 
     def set_mute(self, value: bool) -> None:
         """Mute (True) or unmute (False) the device."""
         val = 5 if value else 1
-        self.send_pdus([Command(
-            handle=0, target=33619989, method_level=4, method_index=2,
-            method_params=[OcaUint16(val)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=33619989,
+                    method_level=4,
+                    method_index=2,
+                    method_params=[OcaUint16(val)],
+                )
+            ]
+        )
 
     def set_input(self, value: int) -> None:
         """Select input: 0 = RCA, 1 = XLR."""
         if value not in (0, 1):
             raise ValueError(f"Input value must be 0 or 1, got {value}")
-        self.send_pdus([Command(
-            handle=0, target=16842763, method_level=4, method_index=2,
-            method_params=[OcaUint16(value)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=16842763,
+                    method_level=4,
+                    method_index=2,
+                    method_params=[OcaUint16(value)],
+                )
+            ]
+        )
 
     # ── Volume ───────────────────────────────────────────────────────────────
 
@@ -222,10 +283,17 @@ class Device:
         """
         if not (-40 <= value <= 12):
             raise ValueError(f"Level {value} out of range -40..12")
-        self.send_pdus([Command(
-            handle=0, target=16842754, method_level=5, method_index=2,
-            method_params=[OcaInt8(value)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=16842754,
+                    method_level=5,
+                    method_index=2,
+                    method_params=[OcaInt8(value)],
+                )
+            ]
+        )
 
     # ── EQ ───────────────────────────────────────────────────────────────────
 
@@ -233,37 +301,65 @@ class Device:
         """Bass correction: -2, -1, 0, +1 (Pure and UNR voicings)."""
         if not (-2 <= value <= 1):
             raise ValueError(f"Bass value {value} out of range -2..1")
-        self.send_pdus([Command(
-            handle=0, target=50397285, method_level=5, method_index=2,
-            method_params=[OcaInt8(value)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50397285,
+                    method_level=5,
+                    method_index=2,
+                    method_params=[OcaInt8(value)],
+                )
+            ]
+        )
 
     def set_desk(self, value: int) -> None:
         """Desk correction: -2, -1, 0 (Pure and UNR voicings)."""
         if not (-2 <= value <= 0):
             raise ValueError(f"Desk value {value} out of range -2..0")
-        self.send_pdus([Command(
-            handle=0, target=50397286, method_level=5, method_index=2,
-            method_params=[OcaInt8(value)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50397286,
+                    method_level=5,
+                    method_index=2,
+                    method_params=[OcaInt8(value)],
+                )
+            ]
+        )
 
     def set_presence(self, value: int) -> None:
         """Presence correction: -1, 0, +1 (Pure and UNR voicings)."""
         if not (-1 <= value <= 1):
             raise ValueError(f"Presence value {value} out of range -1..1")
-        self.send_pdus([Command(
-            handle=0, target=50397287, method_level=5, method_index=2,
-            method_params=[OcaInt8(value)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50397287,
+                    method_level=5,
+                    method_index=2,
+                    method_params=[OcaInt8(value)],
+                )
+            ]
+        )
 
     def set_treble(self, value: int) -> None:
         """Treble correction: -1, 0, +1 (Pure and UNR voicings)."""
         if not (-1 <= value <= 1):
             raise ValueError(f"Treble value {value} out of range -1..1")
-        self.send_pdus([Command(
-            handle=0, target=50397288, method_level=5, method_index=2,
-            method_params=[OcaInt8(value)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50397288,
+                    method_level=5,
+                    method_index=2,
+                    method_params=[OcaInt8(value)],
+                )
+            ]
+        )
 
     # ── Voicing ──────────────────────────────────────────────────────────────
 
@@ -276,19 +372,33 @@ class Device:
         """
         if value not in (0, 1, 2):
             raise ValueError(f"Voicing value must be 0, 1, or 2, got {value}")
-        self.send_pdus([Command(
-            handle=54, target=50397289, method_level=4, method_index=2,
-            method_params=[OcaUint16(value)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=54,
+                    target=50397289,
+                    method_level=4,
+                    method_index=2,
+                    method_params=[OcaUint16(value)],
+                )
+            ]
+        )
 
     # ── Diagnostics ──────────────────────────────────────────────────────────
 
     def blink(self) -> None:
         """Identify device by blinking its LED."""
-        self.send_pdus([Command(
-            handle=52, target=50593804, method_level=5, method_index=2,
-            method_params=[OcaUint16(0x0101)],
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=52,
+                    target=50593804,
+                    method_level=5,
+                    method_index=2,
+                    method_params=[OcaUint16(0x0101)],
+                )
+            ]
+        )
 
     # ── GET methods (method_index=1 per AES70/OCA spec) ───────────────────────
     #
@@ -303,33 +413,61 @@ class Device:
         Read current mute state.
         Device returns OcaUint16: 1 = unmuted, 5 = muted.
         """
-        self.send_pdus([Command(
-            handle=0, target=33619989, method_level=4, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=33619989,
+                    method_level=4,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaUint16])
         return response.params[0].value == 5
 
     def get_sleep(self) -> bool:
         """Read current sleep/standby state. Device returns OcaUint16: 0=awake, 1=sleep."""
-        self.send_pdus([Command(
-            handle=0, target=50528364, method_level=4, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50528364,
+                    method_level=4,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaUint16])
         return bool(response.params[0].value)
 
     def get_input(self) -> int:
         """Read current input selection. Returns 0 (RCA) or 1 (XLR)."""
-        self.send_pdus([Command(
-            handle=0, target=16842763, method_level=4, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=16842763,
+                    method_level=4,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaUint16])
         return int(response.params[0].value)
 
     def get_voicing(self) -> int:
         """Read current voicing. Returns 0 (Pure), 1 (UNR) or 2 (Ext)."""
-        self.send_pdus([Command(
-            handle=54, target=50397289, method_level=4, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=54,
+                    target=50397289,
+                    method_level=4,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaUint16])
         return int(response.params[0].value)
 
@@ -338,40 +476,75 @@ class Device:
         Read current volume level as raw device integer.
         Divide by 2 to get dB (range −40..+12 raw = −20..+6 dB).
         """
-        self.send_pdus([Command(
-            handle=0, target=16842754, method_level=5, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=16842754,
+                    method_level=5,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaInt8])
         return int(response.params[0].value)
 
     def get_bass(self) -> int:
         """Read current bass correction (−2 to +1)."""
-        self.send_pdus([Command(
-            handle=0, target=50397285, method_level=5, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50397285,
+                    method_level=5,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaInt8])
         return int(response.params[0].value)
 
     def get_desk(self) -> int:
         """Read current desk correction (−2 to 0)."""
-        self.send_pdus([Command(
-            handle=0, target=50397286, method_level=5, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50397286,
+                    method_level=5,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaInt8])
         return int(response.params[0].value)
 
     def get_presence(self) -> int:
         """Read current presence correction (−1 to +1)."""
-        self.send_pdus([Command(
-            handle=0, target=50397287, method_level=5, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50397287,
+                    method_level=5,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaInt8])
         return int(response.params[0].value)
 
     def get_treble(self) -> int:
         """Read current treble correction (−1 to +1)."""
-        self.send_pdus([Command(
-            handle=0, target=50397288, method_level=5, method_index=1,
-        )])
+        self.send_pdus(
+            [
+                Command(
+                    handle=0,
+                    target=50397288,
+                    method_level=5,
+                    method_index=1,
+                )
+            ]
+        )
         response = self.receive_response([OcaInt8])
         return int(response.params[0].value)

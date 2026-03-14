@@ -82,12 +82,14 @@ If your speakers are on the same network, HA will automatically detect them via 
 
 Copy `www/adam-audio-card.js` to your HA `config/www/` directory, then:
 
-**Settings → Dashboards → Resources → + Add resource**
+**Settings → Dashboards → ⋮ (top-right) → Resources → + Add resource**
 
 | Field | Value |
 |---|---|
 | URL | `/local/adam-audio-card.js` |
-| Resource type | JavaScript module |
+| Resource type | JavaScript Module |
+
+> **Important:** After adding the resource, perform a **hard refresh** of your browser (**Ctrl+Shift+R** / **Cmd+Shift+R**) to load the new JavaScript file.
 
 ### 2. Add the card
 
@@ -180,6 +182,16 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 
 ---
 
+## TODO
+
+- [ ] **Full test suite**: Add comprehensive tests for all entity platforms (switch, select, number), group entity logic, and coordinator update cycle. See [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) for the testing framework.
+- [ ] **Add translation support**
+- [ ] **Test Adam Audio Card**: custom dashboard display, to be tested
+- [ ] **Fix**: icon and logo in dark mode - are not visible
+- [ ] **Add support for more ADAM Audio speaker models**
+
+---
+
 ## Credits
 
 Protocol implementation based on **[pacontrol](https://github.com/dmach/pacontrol)** by [@dmach](https://github.com/dmach), licensed GPL-3.0.
@@ -188,4 +200,4 @@ Protocol implementation based on **[pacontrol](https://github.com/dmach/pacontro
 
 ## License
 
-GPL-3.0 — see [LICENSE](LICENSE)
+MIT — see [LICENSE](LICENSE)
