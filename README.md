@@ -1,7 +1,7 @@
 # hass-adam-audio-control
 
 [![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue.svg)](https://www.home-assistant.io)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue.svg)](https://www.home-assistant.io)
 
 Home Assistant integration for **ADAM Audio A-Series studio monitors** (A4V, A7V, etc.) via the AES70/OCA protocol over UDP.
 
@@ -29,7 +29,7 @@ Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
 
 ## Requirements
 
-- Home Assistant **2024.1** or newer
+- Home Assistant **2026.3.0** or newer
 - ADAM Audio A-Series speaker on the **same local network** as your HA instance
 - [HACS](https://hacs.xyz) (for the HACS install path)
 
