@@ -5,7 +5,7 @@ Update loop
 Every POLL_INTERVAL seconds the coordinator calls client.async_fetch_state(),
 which sends a keepalive followed by GET commands for every controllable
 parameter.  The GET responses populate client.state with the real device
-values, so changes made via the physical volume knob or ADAM Audio's A
+values, so changes made via the physical knob or ADAM Audio's A
 Control app are reflected in Home Assistant within one poll cycle.
 
 If the fetch fails (device unreachable), UpdateFailed is raised so HA marks

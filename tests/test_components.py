@@ -1,0 +1,233 @@
+"""Tests for ADAM Audio platform components (switch, number, select)."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+from homeassistant.components.number import ATTR_VALUE, SERVICE_SET_VALUE
+from homeassistant.components.select import ATTR_OPTION, SERVICE_SELECT_OPTION
+from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+)
+from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+
+async def test_switch_entities(
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_client: MagicMock,
+) -> None:
+    """Test switch entities."""
+    mock_config_entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    # Mute switch
+    mute_entity = "switch.left_speaker_mute"
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: mute_entity},
+        blocking=True,
+    )
+    mock_client.async_set_mute.assert_called_once_with(True)
+
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_OFF,
+        {ATTR_ENTITY_ID: mute_entity},
+        blocking=True,
+    )
+    mock_client.async_set_mute.assert_called_with(False)
+
+    # Standby switch
+    standby_entity = "switch.left_speaker_sleep"
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: standby_entity},
+        blocking=True,
+    )
+    mock_client.async_set_sleep.assert_called_once_with(True)
+
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_OFF,
+        {ATTR_ENTITY_ID: standby_entity},
+        blocking=True,
+    )
+    mock_client.async_set_sleep.assert_called_with(False)
+
+
+async def test_number_entities(
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_client: MagicMock,
+) -> None:
+    """Test number entities."""
+    mock_config_entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    bass_entity = "number.left_speaker_bass"
+    await hass.services.async_call(
+        "number",
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: bass_entity, ATTR_VALUE: 1.0},
+        blocking=True,
+    )
+    mock_client.async_set_bass.assert_called_once_with(1)
+
+    desk_entity = "number.left_speaker_desk"
+    await hass.services.async_call(
+        "number",
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: desk_entity, ATTR_VALUE: -1.0},
+        blocking=True,
+    )
+    mock_client.async_set_desk.assert_called_once_with(-1)
+
+    presence_entity = "number.left_speaker_presence"
+    await hass.services.async_call(
+        "number",
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: presence_entity, ATTR_VALUE: 1.0},
+        blocking=True,
+    )
+    mock_client.async_set_presence.assert_called_once_with(1)
+
+    treble_entity = "number.left_speaker_treble"
+    await hass.services.async_call(
+        "number",
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: treble_entity, ATTR_VALUE: 0.0},
+        blocking=True,
+    )
+    mock_client.async_set_treble.assert_called_once_with(0)
+
+
+async def test_select_entities(
+    hass: HomeAssistant,
+    mock_config_entry,
+    mock_client: MagicMock,
+) -> None:
+    """Test select entities."""
+    mock_config_entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    voicing_entity = "select.left_speaker_voicing"
+    await hass.services.async_call(
+        "select",
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: voicing_entity, ATTR_OPTION: "Pure"},
+        blocking=True,
+    )
+    mock_client.async_set_voicing.assert_called_once_with(0)
+
+    input_entity = "select.left_speaker_input_source"
+    await hass.services.async_call(
+        "select",
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: input_entity, ATTR_OPTION: "RCA"},
+        blocking=True,
+    )
+    mock_client.async_set_input.assert_called_once_with(0)
+
+
+@pytest.mark.usefixtures("mock_config_entry", "mock_client")
+async def test_group_switch_entities(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """Test group switch entities control all speakers."""
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    mute_entity = "switch.all_speakers_mute"
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: mute_entity},
+        blocking=True,
+    )
+    mock_client.async_set_mute.assert_called_with(True)
+
+    sleep_entity = "switch.all_speakers_sleep"
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: sleep_entity},
+        blocking=True,
+    )
+    mock_client.async_set_sleep.assert_called_with(True)
+
+
+@pytest.mark.usefixtures("mock_config_entry", "mock_client")
+async def test_group_number_entities(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """Test group number entities."""
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    bass_entity = "number.all_speakers_bass"
+    await hass.services.async_call(
+        "number",
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: bass_entity, ATTR_VALUE: 1.0},
+        blocking=True,
+    )
+    mock_client.async_set_bass.assert_called_with(1)
+
+
+@pytest.mark.usefixtures("mock_config_entry", "mock_client")
+async def test_group_select_entities(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """Test group select entities."""
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    voicing_entity = "select.all_speakers_voicing"
+    await hass.services.async_call(
+        "select",
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: voicing_entity, ATTR_OPTION: "Pure"},
+        blocking=True,
+    )
+    mock_client.async_set_voicing.assert_called_with(0)

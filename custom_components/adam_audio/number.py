@@ -146,7 +146,9 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
         super().__init__(coordinator)
         self._desc = desc
         self._attr_translation_key = desc.translation_key
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{desc.translation_key}"
+        self._attr_unique_id = (
+            f"{DOMAIN}_{coordinator.device_unique_id}_{desc.translation_key}"
+        )
         self._attr_icon = desc.icon
         self._attr_native_min_value = desc.native_min
         self._attr_native_max_value = desc.native_max
@@ -170,7 +172,7 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Set the value on the device."""
         setter = getattr(self.coordinator.client, self._desc.setter_name)
-        # EQ controls expect int; volume expects float
+        # EQ controls expect int
         if self._desc.native_step == 1.0:
             value = int(value)
         await setter(value)

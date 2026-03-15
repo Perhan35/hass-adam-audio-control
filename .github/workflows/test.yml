@@ -1,0 +1,42 @@
+name: Test and Lint
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Lint with Ruff
+      run: |
+        ruff check .
+        ruff format --check .
+
+    - name: Test with pytest
+      run: |
+        pytest tests/ -v --cov=custom_components.adam_audio --cov-report=xml
+
+    - name: Check coverage threshold
+      run: |
+        pytest tests/ --cov=custom_components.adam_audio --cov-fail-under=90

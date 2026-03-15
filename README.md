@@ -17,7 +17,6 @@ Controls each speaker individually and provides a virtual **All Speakers** group
 | Sleep / Wake | `switch` | Standby mode |
 | Input Source | `select` | RCA or XLR |
 | Voicing | `select` | Pure, UNR, Ext |
-| Volume | `number` | −12 to +12 dB, 0.5 dB steps |
 | Bass | `number` | −2 to +1 dB |
 | Desk | `number` | −2 to 0 dB |
 | Presence | `number` | −1 to +1 dB |
@@ -119,7 +118,6 @@ entities:
   sleep:    switch.left_sleep
   input:    select.left_input_source
   voicing:  select.left_voicing
-  volume:   number.left_volume
   bass:     number.left_bass
   desk:     number.left_desk
   presence: number.left_presence
@@ -136,7 +134,6 @@ entities:
   sleep:    switch.all_speakers_sleep
   input:    select.all_speakers_input_source
   voicing:  select.all_speakers_voicing
-  volume:   number.all_speakers_volume
   bass:     number.all_speakers_bass
   desk:     number.all_speakers_desk
   presence: number.all_speakers_presence

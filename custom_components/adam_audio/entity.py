@@ -72,7 +72,7 @@ class AdamAudioGroupEntity(Entity):
     def _coordinators(self) -> list[AdamAudioCoordinator]:
         """Return all currently loaded device coordinators."""
         # Import here to avoid circular imports
-        from . import get_coordinators  # noqa: PLC0415
+        from . import get_coordinators
 
         return get_coordinators()
 

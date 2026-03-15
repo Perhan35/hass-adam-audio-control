@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-rm -rf config/.storage                                                   
-rm -f config/home-assistant_v2.db*                                      
+rm -rf config/.storage
+rm -f config/home-assistant_v2.db*
 rm -rf config/.cloud config/deps

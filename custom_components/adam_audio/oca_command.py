@@ -42,9 +42,9 @@ class Command(PDU):
             method_index,
             param_count,
         ) = unpack_from_stream(cls.FORMAT, stream)
-        assert param_count == len(method_params_types), (
-            f"Expected {param_count} parameters, have {len(method_params_types)}"
-        )
+        assert param_count == len(
+            method_params_types
+        ), f"Expected {param_count} parameters, have {len(method_params_types)}"
         params_stream = io.BytesIO(stream.read())
         method_params = [ptype.decode(params_stream) for ptype in method_params_types]
         return cls(handle, target, method_level, method_index, method_params)

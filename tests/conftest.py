@@ -6,7 +6,7 @@ from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.config_entries import ConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.adam_audio.client import AdamAudioState
 from custom_components.adam_audio.const import (
@@ -32,10 +32,30 @@ def auto_enable_custom_integrations(
     """Enable custom integrations for all tests."""
 
 
+@pytest.fixture(autouse=True)
+def clear_state_leakage() -> None:
+    """Clear global state to prevent leakage across tests."""
+    from custom_components.adam_audio import _coordinators
+
+    _coordinators.clear()
+
+    import custom_components.adam_audio.switch as switch_mod
+
+    switch_mod._group_switches_added = False
+
+    import custom_components.adam_audio.number as number_mod
+
+    number_mod._group_numbers_added = False
+
+    import custom_components.adam_audio.select as select_mod
+
+    select_mod._group_selects_added = False
+
+
 @pytest.fixture
-def mock_config_entry() -> ConfigEntry:
+def mock_config_entry() -> MockConfigEntry:
     """Create a mock config entry."""
-    return ConfigEntry(
+    return MockConfigEntry(
         version=1,
         minor_version=1,
         domain=DOMAIN,
@@ -49,6 +69,8 @@ def mock_config_entry() -> ConfigEntry:
         },
         source="user",
         unique_id=MOCK_DEVICE_NAME,
+        options={},
+        discovery_keys={},
     )
 
 
