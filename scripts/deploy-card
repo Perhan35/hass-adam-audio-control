@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+SRC="www/adam-audio-card.js"
+DEST="config/www/adam-audio-card.js"
+
+mkdir -p config/www
+cp "$SRC" "$DEST"
+echo "Deployed $SRC → $DEST"
