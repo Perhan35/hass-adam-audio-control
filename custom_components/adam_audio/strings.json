@@ -2,15 +2,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add ADAM Audio Speaker",
+        "title": "Add ADAM Audio speaker",
         "description": "Enter the IP address of your ADAM Audio A-Series speaker. If you don't know the port, leave it at the default ({default_port}).",
         "data": {
-          "host": "IP Address",
-          "port": "UDP Port"
+          "host": "IP address",
+          "port": "UDP port"
         }
       },
       "zeroconf_confirm": {
-        "title": "ADAM Audio Speaker Found",
+        "title": "ADAM Audio speaker found",
         "description": "Found **{name}** at `{host}`. Do you want to add it to Home Assistant?"
       }
     },
@@ -19,6 +19,38 @@
     },
     "abort": {
       "already_configured": "This speaker is already configured. Its network address has been updated."
+    }
+  },
+  "entity": {
+    "switch": {
+      "mute": {
+        "name": "Mute"
+      },
+      "sleep": {
+        "name": "Sleep"
+      }
+    },
+    "select": {
+      "input_source": {
+        "name": "Input Source"
+      },
+      "voicing": {
+        "name": "Voicing"
+      }
+    },
+    "number": {
+      "bass": {
+        "name": "Bass"
+      },
+      "desk": {
+        "name": "Desk"
+      },
+      "presence": {
+        "name": "Presence"
+      },
+      "treble": {
+        "name": "Treble"
+      }
     }
   }
 }

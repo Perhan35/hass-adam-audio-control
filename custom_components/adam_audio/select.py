@@ -67,7 +67,7 @@ async def async_setup_entry(
 class AdamAudioInputSelect(AdamAudioEntity, SelectEntity):
     """Input source selector for a single speaker (RCA / XLR)."""
 
-    _attr_name = "Input Source"
+    _attr_translation_key = "input_source"
     _attr_icon = "mdi:import"
     _attr_options = INPUT_OPTIONS
 
@@ -90,7 +90,7 @@ class AdamAudioInputSelect(AdamAudioEntity, SelectEntity):
 class AdamAudioVoicingSelect(AdamAudioEntity, SelectEntity):
     """Voicing selector for a single speaker (Pure / UNR / Ext)."""
 
-    _attr_name = "Voicing"
+    _attr_translation_key = "voicing"
     _attr_icon = "mdi:equalizer-outline"
     _attr_options = VOICING_OPTIONS
 
@@ -118,7 +118,7 @@ class AdamAudioVoicingSelect(AdamAudioEntity, SelectEntity):
 class AdamAudioGroupInputSelect(AdamAudioGroupEntity, SelectEntity):
     """Input source selector that controls ALL speakers."""
 
-    _attr_name = "Input Source"
+    _attr_translation_key = "input_source"
     _attr_icon = "mdi:import"
     _attr_options = INPUT_OPTIONS
     _attr_unique_id = f"{DOMAIN}_{GROUP_DEVICE_ID}_{ENTITY_INPUT}"
@@ -150,7 +150,7 @@ class AdamAudioGroupInputSelect(AdamAudioGroupEntity, SelectEntity):
 class AdamAudioGroupVoicingSelect(AdamAudioGroupEntity, SelectEntity):
     """Voicing selector that controls ALL speakers."""
 
-    _attr_name = "Voicing"
+    _attr_translation_key = "voicing"
     _attr_icon = "mdi:equalizer-outline"
     _attr_options = VOICING_OPTIONS
     _attr_unique_id = f"{DOMAIN}_{GROUP_DEVICE_ID}_{ENTITY_VOICING}"

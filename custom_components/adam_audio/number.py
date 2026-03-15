@@ -51,8 +51,7 @@ _group_numbers_added: bool = False
 class _NumberDesc:
     """Descriptor for a number entity."""
 
-    key: str
-    name: str
+    translation_key: str
     icon: str
     native_min: float
     native_max: float
@@ -67,8 +66,7 @@ class _NumberDesc:
 
 _NUMBER_DESCRIPTORS: tuple[_NumberDesc, ...] = (
     _NumberDesc(
-        key=ENTITY_BASS,
-        name="Bass",
+        translation_key=ENTITY_BASS,
         icon="mdi:equalizer",
         native_min=BASS_MIN,
         native_max=BASS_MAX,
@@ -79,8 +77,7 @@ _NUMBER_DESCRIPTORS: tuple[_NumberDesc, ...] = (
         valid_voicings=(0, 1),  # Pure, UNR
     ),
     _NumberDesc(
-        key=ENTITY_DESK,
-        name="Desk",
+        translation_key=ENTITY_DESK,
         icon="mdi:tune-vertical",
         native_min=DESK_MIN,
         native_max=DESK_MAX,
@@ -91,8 +88,7 @@ _NUMBER_DESCRIPTORS: tuple[_NumberDesc, ...] = (
         valid_voicings=(0, 1),  # Pure, UNR
     ),
     _NumberDesc(
-        key=ENTITY_PRESENCE,
-        name="Presence",
+        translation_key=ENTITY_PRESENCE,
         icon="mdi:tune",
         native_min=PRESENCE_MIN,
         native_max=PRESENCE_MAX,
@@ -103,8 +99,7 @@ _NUMBER_DESCRIPTORS: tuple[_NumberDesc, ...] = (
         valid_voicings=(0, 1),  # Pure, UNR
     ),
     _NumberDesc(
-        key=ENTITY_TREBLE,
-        name="Treble",
+        translation_key=ENTITY_TREBLE,
         icon="mdi:tune-vertical-variant",
         native_min=TREBLE_MIN,
         native_max=TREBLE_MAX,
@@ -150,8 +145,8 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
         """Initialize the number entity."""
         super().__init__(coordinator)
         self._desc = desc
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{desc.key}"
-        self._attr_name = desc.name
+        self._attr_translation_key = desc.translation_key
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{desc.translation_key}"
         self._attr_icon = desc.icon
         self._attr_native_min_value = desc.native_min
         self._attr_native_max_value = desc.native_max
@@ -194,8 +189,8 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
         """Initialize the group number entity."""
         super().__init__(hass)
         self._desc = desc
-        self._attr_unique_id = f"{DOMAIN}_{GROUP_DEVICE_ID}_{desc.key}"
-        self._attr_name = desc.name
+        self._attr_translation_key = desc.translation_key
+        self._attr_unique_id = f"{DOMAIN}_{GROUP_DEVICE_ID}_{desc.translation_key}"
         self._attr_icon = desc.icon
         self._attr_native_min_value = desc.native_min
         self._attr_native_max_value = desc.native_max

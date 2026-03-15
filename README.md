@@ -185,11 +185,16 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 ## TODO
 
 - [ ] **Full test suite**: Add comprehensive tests for all entity platforms (switch, select, number), group entity logic, and coordinator update cycle. See [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) for the testing framework.
-- [ ] **Add translation support**
+- [ ] **Add translation support** & fix auto-discovery
 - [ ] **Test Adam Audio Card**: custom dashboard display, to be tested
-- [ ] **Fix**: icon and logo in dark mode - are not visible
-- [ ] **Add support for more ADAM Audio speaker models**
-
+- [ ] **Fix icon and logo**: not visible in dark mode
+- [?] **Add support for more ADAM Audio speaker models**: tested with A4V only
+- [ ] **Enhance connectivity and error handling**: 
+  - [x] add retry logic,
+  - [x] implement a proper keepalive mechanism,
+  - [ ] better error messages,
+  - [ ] says "Verify read failed for set_sleep (attempt 3/3)" but it actually worked
+  
 ---
 
 ## Credits

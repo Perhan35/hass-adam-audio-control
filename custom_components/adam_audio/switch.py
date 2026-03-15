@@ -58,7 +58,7 @@ async def async_setup_entry(
 class AdamAudioMuteSwitch(AdamAudioEntity, SwitchEntity):
     """Mute switch for a single speaker."""
 
-    _attr_name = "Mute"
+    _attr_translation_key = "mute"
     _attr_icon = "mdi:volume-off"
 
     def __init__(self, coordinator: AdamAudioCoordinator) -> None:
@@ -90,7 +90,7 @@ class AdamAudioMuteSwitch(AdamAudioEntity, SwitchEntity):
 class AdamAudioSleepSwitch(AdamAudioEntity, SwitchEntity):
     """Standby (sleep) switch for a single speaker."""
 
-    _attr_name = "Sleep"
+    _attr_translation_key = "sleep"
     _attr_icon = "mdi:power-sleep"
 
     def __init__(self, coordinator: AdamAudioCoordinator) -> None:
@@ -125,7 +125,7 @@ class AdamAudioSleepSwitch(AdamAudioEntity, SwitchEntity):
 class AdamAudioGroupMuteSwitch(AdamAudioGroupEntity, SwitchEntity):
     """Mute switch that controls ALL speakers simultaneously."""
 
-    _attr_name = "Mute"
+    _attr_translation_key = "mute"
     _attr_unique_id = f"{DOMAIN}_{GROUP_DEVICE_ID}_{ENTITY_MUTE}"
 
     @property
@@ -161,7 +161,7 @@ class AdamAudioGroupMuteSwitch(AdamAudioGroupEntity, SwitchEntity):
 class AdamAudioGroupSleepSwitch(AdamAudioGroupEntity, SwitchEntity):
     """Sleep switch that controls ALL speakers simultaneously."""
 
-    _attr_name = "Sleep"
+    _attr_translation_key = "sleep"
     _attr_unique_id = f"{DOMAIN}_{GROUP_DEVICE_ID}_{ENTITY_SLEEP}"
 
     @property
