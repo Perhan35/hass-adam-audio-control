@@ -32,7 +32,6 @@ ENTITY_MUTE = "mute"
 ENTITY_SLEEP = "sleep"
 ENTITY_INPUT = "input_source"
 ENTITY_VOICING = "voicing"
-ENTITY_VOLUME = "volume"
 ENTITY_BASS = "bass"
 ENTITY_DESK = "desk"
 ENTITY_PRESENCE = "presence"
@@ -51,13 +50,6 @@ VOICING_FROM_INT: dict[int, str] = {0: "Pure", 1: "UNR", 2: "Ext"}
 INPUT_OPTIONS = ["RCA", "XLR"]
 INPUT_TO_INT: dict[str, int] = {"RCA": 0, "XLR": 1}
 INPUT_FROM_INT: dict[int, str] = {0: "RCA", 1: "XLR"}
-
-# ── Volume ───────────────────────────────────────────────────────────────────
-# Exposed in HA as dB (float).  Raw device value = dB * 2  (0.5 dB per step).
-VOLUME_MIN = -20.0
-VOLUME_MAX = 6.0
-VOLUME_STEP = 0.5
-VOLUME_UNIT = "dB"
 
 # ── EQ ranges (direct integer values sent to device) ────────────────────────
 BASS_MIN = -2

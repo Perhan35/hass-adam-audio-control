@@ -11,7 +11,6 @@
  *     sleep:    switch.left_sleep
  *     input:    select.left_input_source
  *     voicing:  select.left_voicing
- *     volume:   number.left_volume
  *     bass:     number.left_bass
  *     desk:     number.left_desk
  *     presence: number.left_presence
@@ -212,22 +211,6 @@ const STYLES = `
   .seg-btn:hover   { background: rgba(255,255,255,0.06); color: var(--adam-text); }
   .seg-btn.active  { background: var(--adam-orange); color: #fff; }
 
-  /* ── Volume fader ───────────────────────────────────────────────────────── */
-  .fader-row { display: flex; flex-direction: column; gap: 6px; }
-
-  .fader-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .fader-value {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--adam-orange);
-    letter-spacing: 0.04em;
-  }
-
   input[type=range] {
     -webkit-appearance: none;
     appearance: none;
@@ -262,15 +245,6 @@ const STYLES = `
   }
 
   input[type=range]:active::-webkit-slider-thumb { transform: scale(1.2); }
-
-  .vol-range-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 9px;
-    color: var(--adam-muted);
-    letter-spacing: 0.05em;
-    margin-top: 1px;
-  }
 
   /* ── EQ section ─────────────────────────────────────────────────────────── */
   .eq-section { display: flex; flex-direction: column; gap: 2px; }
@@ -433,7 +407,6 @@ class AdamAudioCard extends HTMLElement {
         sleep:    "switch.left_sleep",
         input:    "select.left_input_source",
         voicing:  "select.left_voicing",
-        volume:   "number.left_volume",
         bass:     "number.left_bass",
         desk:     "number.left_desk",
         presence: "number.left_presence",
@@ -532,21 +505,6 @@ class AdamAudioCard extends HTMLElement {
 
         <div class="divider"></div>
 
-        <!-- Volume fader -->
-        <div class="fader-row">
-          <div class="fader-header">
-            <div class="control-label">Volume</div>
-            <div class="fader-value" id="vol-display">0.0 dB</div>
-          </div>
-          <input type="range" id="slider-volume"
-            min="-20" max="6" step="0.5" value="0" />
-          <div class="vol-range-labels">
-            <span>−20 dB</span><span>+6 dB</span>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
         <!-- EQ section -->
         <div class="eq-section">
           <button class="eq-toggle" id="eq-toggle">
@@ -604,16 +562,6 @@ class AdamAudioCard extends HTMLElement {
       const btn = e.target.closest(".seg-btn");
       if (!btn) return;
       this._callSelect(this._entities.voicing, btn.dataset.value);
-    });
-
-    // Volume slider
-    const volSlider = root.getElementById("slider-volume");
-    volSlider.addEventListener("change", () => {
-      this._callNumber(this._entities.volume, parseFloat(volSlider.value));
-    });
-    volSlider.addEventListener("input", () => {
-      root.getElementById("vol-display").textContent =
-        this._formatDb(parseFloat(volSlider.value));
     });
 
     // EQ sliders
@@ -680,14 +628,6 @@ class AdamAudioCard extends HTMLElement {
       btn.classList.toggle("active", btn.dataset.value === voicingVal);
     });
 
-    // Volume slider (only update if not currently being dragged)
-    const volSlider = root.getElementById("slider-volume");
-    if (!volSlider.matches(":active")) {
-      const vol = parseFloat(this._stateValue(e.volume) ?? "0");
-      volSlider.value = vol;
-      root.getElementById("vol-display").textContent = this._formatDb(vol);
-    }
-
     // EQ sliders
     ["bass", "desk", "presence", "treble"].forEach((key) => {
       const slider = root.getElementById(`slider-${key}`);
@@ -725,12 +665,6 @@ class AdamAudioCard extends HTMLElement {
   _isAvailable(entityId) {
     const s = this._stateObj(entityId);
     return !!s && s.state !== "unavailable" && s.state !== "unknown";
-  }
-
-  _formatDb(val) {
-    const v = parseFloat(val);
-    if (v === 0) return "0.0 dB";
-    return (v > 0 ? "+" : "") + v.toFixed(1) + " dB";
   }
 
   _callSwitch(entityId, turnOn) {

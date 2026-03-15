@@ -1,6 +1,6 @@
 # The contents of this file is based on https://github.com/home-assistant/core/blob/dev/pyproject.toml
 
-target-version = "py314"
+target-version = "py312"
 
 [lint]
 select = [
@@ -36,11 +36,13 @@ ignore = [
     "D102", # undocumented-public-method (HA entity methods are standard)
     "E501", # line-too-long (URLs, error messages, etc.)
     "BLE001", # blind-except (protocol resilience)
-    "TC001", # typing-only-first-party-import
-    "TC002", # typing-only-third-party-import
-    "TC003", # typing-only-standard-library-import
     "ANN206", # missing-return-type-class-method (properties)
     "ANN204", # missing-return-type-special-method
+    "ANN101", # missing-type-self
+    "TCH",    # type-checking blocks
+    "PLR0913", # too many arguments
+    "PT004",  # fixture-does-not-return-anything
+    "SLF001", # private member accessed
 ]
 
 [lint.per-file-ignores]

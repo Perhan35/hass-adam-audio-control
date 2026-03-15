@@ -41,7 +41,6 @@ class AdamAudioState:
     sleep: bool = False
     input_source: int = 1
     voicing: int = 0
-    volume: float = 0.0
     bass: int = 0
     desk: int = 0
     presence: int = 0
@@ -141,7 +140,7 @@ class AdamAudioClient:
 
         try:
             responses = self._device.get_full_state_pdus()
-            if not responses or len(responses) < 9:
+            if not responses or len(responses) < 8:
                 return False
 
             # Maps response indices to state attributes
@@ -149,11 +148,10 @@ class AdamAudioClient:
             self.state.sleep = bool(responses[1].params[0].value)
             self.state.input_source = int(responses[2].params[0].value)
             self.state.voicing = int(responses[3].params[0].value)
-            self.state.volume = responses[4].params[0].value / 2.0
-            self.state.bass = int(responses[5].params[0].value)
-            self.state.desk = int(responses[6].params[0].value)
-            self.state.presence = int(responses[7].params[0].value)
-            self.state.treble = int(responses[8].params[0].value)
+            self.state.bass = int(responses[4].params[0].value)
+            self.state.desk = int(responses[5].params[0].value)
+            self.state.presence = int(responses[6].params[0].value)
+            self.state.treble = int(responses[7].params[0].value)
         except Exception:
             LOGGER.warning("Batched poll failed for %s", self.host, exc_info=True)
             return False

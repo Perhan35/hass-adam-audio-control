@@ -12,25 +12,72 @@ created to control all speakers simultaneously.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
+from homeassistant.core import callback
 
-from .const import DOMAIN as DOMAIN
-from .const import LOGGER
+from .const import (
+    DOMAIN,  # noqa: F401
+    LOGGER,
+)
 from .coordinator import AdamAudioCoordinator
 from .data import AdamAudioData
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.typing import ConfigType
 
     from .data import AdamAudioConfigEntry
+
+_CARD_URL = "/adam_audio/adam-audio-card.js"
+_CARD_JS = Path(__file__).parent / "www" / "adam-audio-card.js"
 
 PLATFORMS: list[Platform] = [
     Platform.SWITCH,
     Platform.SELECT,
     Platform.NUMBER,
 ]
+
+
+async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
+    """Register the Lovelace card as a frontend resource."""
+    if hasattr(hass, "http") and hass.http is not None:
+        try:
+            hass.http.register_static_path(
+                _CARD_URL, str(_CARD_JS), cache_headers=False
+            )
+        except AttributeError:
+            # Fallback for newer Home Assistant versions
+            from homeassistant.components.http import StaticPathConfig
+
+            await hass.http.async_register_static_paths(
+                [StaticPathConfig(_CARD_URL, str(_CARD_JS), cache_headers=False)]
+            )
+
+    async def _add_resource() -> None:
+        try:
+            lv_resources = hass.data["lovelace"].resources
+            await lv_resources.async_get_info()
+            if not any(
+                _CARD_URL in r.get("url", "") for r in lv_resources.async_items()
+            ):
+                await lv_resources.async_create_item(
+                    {"res_type": "module", "url": _CARD_URL}
+                )
+                LOGGER.info("Registered ADAM Audio card as Lovelace resource")
+        except Exception:
+            LOGGER.debug(
+                "Could not auto-register Lovelace card resource", exc_info=True
+            )
+
+    @callback
+    def _on_started(_event: object) -> None:
+        hass.async_create_task(_add_resource())
+
+    hass.bus.async_listen_once("homeassistant_started", _on_started)
+    return True
 
 
 def get_coordinators() -> list[AdamAudioCoordinator]:

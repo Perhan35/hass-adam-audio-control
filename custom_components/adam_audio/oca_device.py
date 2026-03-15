@@ -148,10 +148,10 @@ class Device:
 
     def get_full_state_pdus(self) -> list[Response]:
         """
-        Query all 9 controllable parameters sequentially.
+        Query all 8 controllable parameters sequentially.
         Each command is sent and its response received individually, because
         the device responds with separate UDP packets per command.
-        Returns a list of 9 Response objects.
+        Returns a list of 8 Response objects.
         """
         commands_and_types = [
             (
@@ -171,23 +171,19 @@ class Device:
                 [OcaUint16],
             ),  # voicing
             (
-                Command(handle=5, target=16842754, method_level=5, method_index=1),
-                [OcaInt8],
-            ),  # volume
-            (
-                Command(handle=6, target=50397285, method_level=5, method_index=1),
+                Command(handle=5, target=50397285, method_level=5, method_index=1),
                 [OcaInt8],
             ),  # bass
             (
-                Command(handle=7, target=50397286, method_level=5, method_index=1),
+                Command(handle=6, target=50397286, method_level=5, method_index=1),
                 [OcaInt8],
             ),  # desk
             (
-                Command(handle=8, target=50397287, method_level=5, method_index=1),
+                Command(handle=7, target=50397287, method_level=5, method_index=1),
                 [OcaInt8],
             ),  # presence
             (
-                Command(handle=9, target=50397288, method_level=5, method_index=1),
+                Command(handle=8, target=50397288, method_level=5, method_index=1),
                 [OcaInt8],
             ),  # treble
         ]
@@ -270,27 +266,6 @@ class Device:
                     method_level=4,
                     method_index=2,
                     method_params=[OcaUint16(value)],
-                )
-            ]
-        )
-
-    # ── Volume ───────────────────────────────────────────────────────────────
-
-    def set_level(self, value: int) -> None:
-        """
-        Set volume level.  Applicable to Ext. voicing.
-        Signed integer in 0.5 dB steps: -40 = -20 dB … +12 = +6 dB.
-        """
-        if not (-40 <= value <= 12):
-            raise ValueError(f"Level {value} out of range -40..12")
-        self.send_pdus(
-            [
-                Command(
-                    handle=0,
-                    target=16842754,
-                    method_level=5,
-                    method_index=2,
-                    method_params=[OcaInt8(value)],
                 )
             ]
         )
@@ -469,24 +444,6 @@ class Device:
             ]
         )
         response = self.receive_response([OcaUint16])
-        return int(response.params[0].value)
-
-    def get_level(self) -> int:
-        """
-        Read current volume level as raw device integer.
-        Divide by 2 to get dB (range −40..+12 raw = −20..+6 dB).
-        """
-        self.send_pdus(
-            [
-                Command(
-                    handle=0,
-                    target=16842754,
-                    method_level=5,
-                    method_index=1,
-                )
-            ]
-        )
-        response = self.receive_response([OcaInt8])
         return int(response.params[0].value)
 
     def get_bass(self) -> int:

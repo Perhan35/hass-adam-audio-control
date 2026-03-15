@@ -60,7 +60,6 @@ def mock_state() -> AdamAudioState:
         sleep=False,
         input_source=1,
         voicing=0,
-        volume=0.0,
         bass=0,
         desk=0,
         presence=0,

@@ -38,6 +38,8 @@ Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
 ![Dashboard entities](screenshots/dashboard.png)
 *All entities for Left, All Speakers and Right monitors in the HA dashboard*
 
+![Alternative dashboard cards](screenshots/alternative_card.png)
+*Alternative dashboard cards using the Adam Audio Card*
 
 ---
 
@@ -198,17 +200,41 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 
 ## TODO
 
-- [ ] **Full test suite**: Add comprehensive tests for all entity platforms (switch, select, number), group entity logic, and coordinator update cycle. See [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) for the testing framework.
+- [x] **Full test suite**: Add comprehensive tests for all entity platforms (switch, select, number), group entity logic, and coordinator update cycle. See [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) for the testing framework.
 - [ ] **Add translation support** & fix auto-discovery
 - [ ] **Test Adam Audio Card**: custom dashboard display, to be tested
 - [ ] **Fix icon and logo**: not visible in dark mode
 - [?] **Add support for more ADAM Audio speaker models**: tested with A4V only
-- [ ] **Enhance connectivity and error handling**: 
+- [ ] **Enhance connectivity and error handling**:
   - [x] add retry logic,
   - [x] implement a proper keepalive mechanism,
   - [ ] better error messages,
   - [ ] says "Verify read failed for set_sleep (attempt 3/3)" but it actually worked
-  
+
+---
+
+## Development & Testing
+
+This project uses `pytest` for unit testing and `pre-commit` hooks for code formatting and linting (`ruff`).
+
+To set up a local development environment:
+
+1. Create a virtual environment and install dependencies:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+2. Run the test suite:
+   ```bash
+   pytest tests/ -v --cov=custom_components.adam_audio
+   ```
+3. Install and run pre-commit hooks to automate formatting:
+   ```bash
+   pre-commit install
+   pre-commit run --all-files
+   ```
+
 ---
 
 ## Credits

@@ -7,6 +7,7 @@
   "config_flow": true,
   "documentation": "https://github.com/Perhan35/hass-adam-audio-control",
   "homeassistant": "2026.3.1",
+  "dependencies": ["lovelace"],
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Perhan35/hass-adam-audio-control/issues",
   "version": "0.0.1-beta",
