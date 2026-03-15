@@ -27,6 +27,20 @@ Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
 
 ---
 
+## Screenshots
+
+![Integration overview](screenshots/integration.png)
+*Integration page showing 3 devices (Left, Right, All Speakers) and 24 entities*
+
+![Device controls](screenshots/controls.png)
+*Per-device control panel — EQ, input source, voicing, mute and sleep*
+
+![Dashboard entities](screenshots/dashboard.png)
+*All entities for Left, All Speakers and Right monitors in the HA dashboard*
+
+
+---
+
 ## Requirements
 
 - Home Assistant **2026.3.0** or newer
