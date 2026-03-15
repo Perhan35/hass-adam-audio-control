@@ -86,7 +86,7 @@ If your speakers are on the same network, HA will automatically detect them via 
 1. **Settings → Devices & Services → + Add Integration**
 2. Search for **ADAM Audio**
 3. Enter the speaker's **IP address** (assign a static DHCP lease to each speaker in your router for reliability)
-4. Leave port at `49362` unless you know it differs
+4. Leave default port at `49494` unless you know it differs
 5. Repeat for each speaker
 
 ---
@@ -95,20 +95,12 @@ If your speakers are on the same network, HA will automatically detect them via 
 
 ### 1. Add the resource
 
-Copy `www/adam-audio-card.js` to your HA `config/www/` directory, then:
-
-**Settings → Dashboards → ⋮ (top-right) → Resources → + Add resource**
-
-| Field | Value |
-|---|---|
-| URL | `/local/adam-audio-card.js` |
-| Resource type | JavaScript Module |
-
-> **Important:** After adding the resource, perform a **hard refresh** of your browser (**Ctrl+Shift+R** / **Cmd+Shift+R**) to load the new JavaScript file.
+Dashboard cards are automatically added when the integration is installed.
 
 ### 2. Add the card
 
-Edit your dashboard and add a **Manual card** with this YAML (replace entity IDs with your own — find them in **Settings → Devices & Services → your speaker**):
+Edit your dashboard and at the bottom the custom Adam Audio cards will display. Select the one you want to add.
+Or add a **Manual card** with this YAML (replace entity IDs with your own — find them in **Settings → Devices & Services → your speaker**):
 
 ```yaml
 type: custom:adam-audio-card
@@ -167,7 +159,7 @@ automation:
     - condition: time
       weekday: [mon, tue, wed, thu, fri]
   action:
-    - service: switch.turn_off
+    - service: switch.turn_on
       target:
         entity_id: switch.all_speakers_sleep
 ```
@@ -190,7 +182,7 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 |---|---|
 | Speaker not discovered | Check the speaker is on the same network/VLAN as HA. Try the manual IP method. |
 | Entities show Unavailable | Speaker may be in deep sleep mode. Try the manual IP fallback; the integration retries on the next poll cycle. |
-| State doesn't reflect knob changes | Expected — state is optimistic. Reload the integration entry to reset to defaults. |
+| State doesn't reflect knob changes | Expected — state is optimistic and takes some time to update. Reload the integration entry to reset to defaults (if wanted/needed). |
 | Commands stop working | Unload and reload the integration entry to reset the OCA session. |
 
 ---
@@ -198,15 +190,14 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 ## TODO
 
 - [x] **Full test suite**: Add comprehensive tests for all entity platforms (switch, select, number), group entity logic, and coordinator update cycle. See [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) for the testing framework.
-- [ ] **Add translation support** & fix auto-discovery
-- [ ] **Test Adam Audio Card**: custom dashboard display, to be tested
-- [ ] **Fix icon and logo**: not visible in dark mode
+- [ ] **Add translation support**
+- [ ] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
 - [?] **Add support for more ADAM Audio speaker models**: tested with A4V only
 - [ ] **Enhance connectivity and error handling**:
   - [x] add retry logic,
   - [x] implement a proper keepalive mechanism,
   - [ ] better error messages,
-  - [ ] says "Verify read failed for set_sleep (attempt 3/3)" but it actually worked
+  - [x] says "Verify read failed for set_sleep (attempt 3/3)" but it actually worked
 
 ---
 

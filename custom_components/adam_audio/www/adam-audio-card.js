@@ -695,7 +695,13 @@ class AdamAudioCard extends HTMLElement {
   getCardSize() { return 5; }
 }
 
-customElements.define("adam-audio-card", AdamAudioCard);
+try {
+  customElements.define("adam-audio-card", AdamAudioCard);
+} catch (e) {
+  if (!e.message.includes("already been used")) {
+    console.error("Failed to register adam-audio-card:", e);
+  }
+}
 
 // Register with HACS / custom card picker
 window.customCards = window.customCards || [];

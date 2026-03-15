@@ -34,6 +34,9 @@ if TYPE_CHECKING:
 _CARD_URL = "/adam_audio/adam-audio-card.js"
 _CARD_JS = Path(__file__).parent / "www" / "adam-audio-card.js"
 
+_BACKPLATE_URL = "/adam_audio/backplate-card.js"
+_BACKPLATE_JS = Path(__file__).parent / "www" / "backplate-card.js"
+
 PLATFORMS: list[Platform] = [
     Platform.SWITCH,
     Platform.SELECT,
@@ -48,18 +51,28 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
             hass.http.register_static_path(
                 _CARD_URL, str(_CARD_JS), cache_headers=False
             )
+            hass.http.register_static_path(
+                _BACKPLATE_URL, str(_BACKPLATE_JS), cache_headers=False
+            )
         except AttributeError:
             # Fallback for newer Home Assistant versions
             from homeassistant.components.http import StaticPathConfig
 
             await hass.http.async_register_static_paths(
-                [StaticPathConfig(_CARD_URL, str(_CARD_JS), cache_headers=False)]
+                [
+                    StaticPathConfig(_CARD_URL, str(_CARD_JS), cache_headers=False),
+                    StaticPathConfig(
+                        _BACKPLATE_URL, str(_BACKPLATE_JS), cache_headers=False
+                    ),
+                ]
             )
 
     async def _add_resource() -> None:
         try:
             lv_resources = hass.data["lovelace"].resources
             await lv_resources.async_get_info()
+
+            # Register adam-audio-card.js
             if not any(
                 _CARD_URL in r.get("url", "") for r in lv_resources.async_items()
             ):
@@ -67,6 +80,15 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
                     {"res_type": "module", "url": _CARD_URL}
                 )
                 LOGGER.info("Registered ADAM Audio card as Lovelace resource")
+
+            # Register backplate-card.js
+            if not any(
+                _BACKPLATE_URL in r.get("url", "") for r in lv_resources.async_items()
+            ):
+                await lv_resources.async_create_item(
+                    {"res_type": "module", "url": _BACKPLATE_URL}
+                )
+                LOGGER.info("Registered ADAM Audio Backplate card as Lovelace resource")
         except Exception:
             LOGGER.debug(
                 "Could not auto-register Lovelace card resource", exc_info=True
