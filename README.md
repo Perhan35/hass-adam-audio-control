@@ -1,7 +1,9 @@
-# hass-adam-audio-control
+# Home Assistant - ADAM Audio Control (A series)
 
 [![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue.svg)](https://www.home-assistant.io)
+[![Test and Lint](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml/badge.svg)](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml)
+[![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/)
 
 Home Assistant integration for **ADAM Audio A-Series studio monitors** (A4V, A7V, etc.) via the AES70/OCA protocol over UDP.
 
