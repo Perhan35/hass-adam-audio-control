@@ -15,6 +15,6 @@
   "issue_tracker": "https://github.com/Perhan35/hass-adam-audio-control/issues",
   "version": "0.0.2",
   "zeroconf": [
-    { "type": "_oca._udp.local.", "name": "ASeries*" }
+    { "type": "_oca._udp.local.", "name": "aseries*" }
   ]
 }
