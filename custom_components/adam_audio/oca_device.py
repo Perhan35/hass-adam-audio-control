@@ -63,16 +63,19 @@ class Device:
 
     def drain(self) -> None:
         """Discard all pending packets in the UDP receive buffer to prevent stale data."""
-        original_timeout = self.sock.gettimeout()
-        self.sock.settimeout(0.0)
         try:
+            original_timeout = self.sock.gettimeout()
+            self.sock.settimeout(0.0)
             while True:
                 # Discard up to 1024 bytes at a time until buffer is empty.
                 self.sock.recvfrom(1024)
         except TimeoutError, BlockingIOError, OSError:
             pass
         finally:
-            self.sock.settimeout(original_timeout)
+            try:
+                self.sock.settimeout(original_timeout)
+            except OSError:
+                pass
 
     # ── Low-level I/O ────────────────────────────────────────────────────────
 

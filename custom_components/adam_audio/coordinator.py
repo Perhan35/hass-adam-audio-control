@@ -69,6 +69,8 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
             LOGGER,
             name=f"{DOMAIN}_{self.device_unique_id}",
             update_interval=timedelta(seconds=POLL_INTERVAL),
+            always_update=False,
+            config_entry=entry,
         )
 
     # ── Public setup / teardown ───────────────────────────────────────────────

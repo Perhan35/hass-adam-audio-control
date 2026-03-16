@@ -266,7 +266,7 @@ To set up a local development environment:
 
 You can also run the test suite for all checks at once:
    ```bash
-   python scripts/checks
+  ./scripts/checks
    ```
 
 
