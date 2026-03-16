@@ -93,19 +93,53 @@ If your speakers are on the same network, HA will automatically detect them via 
 
 ---
 
-## Dashboard Card
+## Dashboard Cards
 
-### 1. Add the resource
+Some custom Lovelace cards are included. They are automatically registered as frontend resources when the integration loads — no manual resource setup needed.
 
-Dashboard cards are automatically added when the integration is installed.
-
-### 2. Add the card
+### Add a card
 
 Edit your dashboard and at the bottom the custom Adam Audio cards will display. Select the one you want to add.
-Or add a **Manual card** with this YAML (replace entity IDs with your own — find them in **Settings → Devices & Services → your speaker**):
+Or add a **Manual card** with the following YAML (replace entity IDs with your own — find them in **Settings → Devices & Services → your speaker**).
+
+All cards use the **same configuration schema**, so you can switch between them by changing the `type` field.
+
+### Cards available
+
+- `custom:adam-audio-card`
+- `custom:adam-audio-backplate-card`
+- `custom:backplate-card`
+
+### ADAM Audio Card (`custom:adam-audio-card`)
+
+A modern UI-style control card with segment selectors, sliders, and status indicators.
 
 ```yaml
 type: custom:adam-audio-card
+title: Left Monitor
+entities:
+  mute:     switch.{entity_name}_mute
+  sleep:    switch.{entity_name}_sleep
+  input:    select.{entity_name}_input_source
+  voicing:  select.{entity_name}_voicing
+  bass:     number.{entity_name}_bass
+  desk:     number.{entity_name}_desk
+  presence: number.{entity_name}_presence
+  treble:   number.{entity_name}_treble
+```
+
+### Backplate Card (`custom:adam-audio-backplate-card`)
+
+A card that visually replicates the physical backplate of an ADAM Audio A-Series monitor — dark metallic panel, green LED indicators, frequency response curves, XLR/RCA connector graphics, toggle and rocker switches.
+
+- **Room Adaptation**: Click green LED dots to set Bass, Desk, Presence, and Treble dB values. Curves between LEDs mimic the frequency response aesthetic of the real backplate.
+- **Audio IN**: XLR and RCA connector visuals with LED indicators. Click "Input Select" to toggle.
+- **Voicing**: Click Pure, UNR, or Ext to select. Selecting Ext disables Room Adaptation controls.
+- **Mute / Power**: DIP toggle switch (mute, red LED) and rocker switch (power/sleep, amber LED).
+- **Status LED**: Green = online, red = muted, green blinking = sleeping.
+
+```yaml
+type: custom:adam-audio-backplate-card
 title: Left Monitor
 entities:
   mute:     switch.left_mute
@@ -118,10 +152,12 @@ entities:
   treble:   number.left_treble
 ```
 
-For the **All Speakers** group card, use the group entities (prefixed `all_speakers_`):
+### All Speakers Group
+
+All cards work with the **All Speakers** group entities (prefixed `all_speakers_`):
 
 ```yaml
-type: custom:adam-audio-card
+type: custom:adam-audio-backplate-card
 title: All Monitors
 entities:
   mute:     switch.all_speakers_mute
@@ -196,13 +232,13 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 
 - [x] **Full test suite**: Add comprehensive tests for all entity platforms (switch, select, number), group entity logic, and coordinator update cycle. See [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) for the testing framework.
 - [ ] **Add translation support**
-- [ ] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
+- [x] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
+- [ ] **Rename Lovelace custom cards**
 - [?] **Add support for more ADAM Audio speaker models**: tested with A4V only
 - [ ] **Enhance connectivity and error handling**:
   - [x] add retry logic,
   - [x] implement a proper keepalive mechanism,
-  - [ ] better error messages,
-  - [x] says "Verify read failed for set_sleep (attempt 3/3)" but it actually worked
+  - [ ] better error messages
 
 ---
 
@@ -226,6 +262,17 @@ To set up a local development environment:
    ```bash
    pre-commit install
    pre-commit run --all-files
+   ```
+
+You can also run the test suite for all checks at once:
+   ```bash
+   python scripts/checks
+   ```
+
+
+For debug, you can run the zeroconf discovery test:
+   ```bash
+   python scripts/browse_mdns
    ```
 
 ---
