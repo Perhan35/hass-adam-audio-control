@@ -49,9 +49,9 @@ _MANUAL_SCHEMA = vol.Schema(
 class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow that handles both zeroconf discovery and manual IP entry.
 
-    A unique_id is set to the device's hardware name (e.g. 'ASeries-41472b')
-    so that the same physical speaker is never registered twice, even if its
-    IP address changes and it is re-discovered.
+    A unique_id is set to the device's serial number (preferred) or hardware
+    name so that the same physical speaker is never registered twice, even if
+    its IP address changes and it is re-discovered.
     """
 
     VERSION = 1
@@ -77,7 +77,7 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             else:
                 device_name, description, serial = result
-                await self.async_set_unique_id(device_name)
+                await self.async_set_unique_id(serial or device_name)
                 self._abort_if_unique_id_configured(
                     updates={CONF_HOST: host, CONF_PORT: port}
                 )
@@ -118,16 +118,17 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
         if not device_id:
             device_id = host.replace(".", "_")
 
-        await self.async_set_unique_id(device_id)
-        # If this device is already configured, just update its IP/port silently.
-        self._abort_if_unique_id_configured(updates={CONF_HOST: host, CONF_PORT: port})
-
-        # Attempt to connect and retrieve the user-facing description.
+        # Attempt to connect and retrieve device metadata (including serial).
         result = await self._async_try_connect(host, port)
         if result is not None:
             _device_name, description, serial = result
         else:
             _device_name, description, serial = device_id, device_id, ""
+
+        # Prefer serial (stable, device-embedded) as unique_id; fall back to hostname.
+        await self.async_set_unique_id(serial or device_id)
+        # If this device is already configured, just update its IP/port silently.
+        self._abort_if_unique_id_configured(updates={CONF_HOST: host, CONF_PORT: port})
 
         self._discovery = {
             CONF_HOST: host,

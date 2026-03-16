@@ -68,7 +68,7 @@ def mock_config_entry() -> MockConfigEntry:
             CONF_SERIAL: MOCK_SERIAL,
         },
         source="user",
-        unique_id=MOCK_DEVICE_NAME,
+        unique_id=MOCK_SERIAL,
         options={},
         discovery_keys={},
     )

@@ -3,7 +3,7 @@
 [![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue.svg)](https://www.home-assistant.io)
 [![Test and Lint](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml/badge.svg)](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml)
-[![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/)
+<!-- [![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/) -->
 
 Home Assistant integration for **ADAM Audio A-Series studio monitors** (A4V, A7V, etc.) via the AES70/OCA protocol over UDP.
 
@@ -180,12 +180,15 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 
 ## Troubleshooting
 
+> **Warning:** Avoid opening the official **ADAM Audio A Control** app while this integration is running. Although you can open it, doing so will cause the speakers to reset their active commands to the ones sent by A Control, overriding any state set by this integration.
+
 | Symptom | Fix |
 |---|---|
 | Speaker not discovered | Check the speaker is on the same network/VLAN as HA. Try the manual IP method. |
 | Entities show Unavailable | Speaker may be in deep sleep mode. Try the manual IP fallback; the integration retries on the next poll cycle. |
 | State doesn't reflect knob changes | Expected — state is optimistic and takes some time to update. Reload the integration entry to reset to defaults (if wanted/needed). |
 | Commands stop working | Unload and reload the integration entry to reset the OCA session. |
+| A Control app overrode my settings | Opening the A Control app resets commands to those sent by A Control. Close A Control to regain control from Home Assistant. |
 
 ---
 
