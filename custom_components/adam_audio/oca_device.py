@@ -69,7 +69,7 @@ class Device:
             while True:
                 # Discard up to 1024 bytes at a time until buffer is empty.
                 self.sock.recvfrom(1024)
-        except (TimeoutError, BlockingIOError, OSError):
+        except TimeoutError, BlockingIOError, OSError:
             pass
         finally:
             self.sock.settimeout(original_timeout)

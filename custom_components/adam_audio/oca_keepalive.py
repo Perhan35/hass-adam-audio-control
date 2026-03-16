@@ -18,7 +18,7 @@ class Keepalive(PDU):
         self.timeout = timeout
 
     @classmethod
-    def decode(cls, stream: BinaryIO, size: int = 4) -> "Keepalive":
+    def decode(cls, stream: BinaryIO, size: int = 4) -> Keepalive:
         if size == 4:
             (value,) = unpack_from_stream("!I", stream)
         elif size == 2:

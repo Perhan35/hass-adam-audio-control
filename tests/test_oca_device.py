@@ -86,17 +86,17 @@ def test_device_setters(mock_socket: MagicMock) -> None:
 def test_device_setter_value_errors(mock_socket: MagicMock) -> None:
     """Test exceptions on out-of-bounds setter values."""
     device = Device.from_address("192.168.1.100", 49494)
-    with pytest.raises(ValueError, match="Out of bounds"):
+    with pytest.raises(ValueError, match="Input value must be 0 or 1"):
         device.set_input(3)
-    with pytest.raises(ValueError, match="Out of bounds"):
+    with pytest.raises(ValueError, match=r"Bass value .* out of range"):
         device.set_bass(5)
-    with pytest.raises(ValueError, match="Out of bounds"):
+    with pytest.raises(ValueError, match=r"Desk value .* out of range"):
         device.set_desk(-5)
-    with pytest.raises(ValueError, match="Out of bounds"):
+    with pytest.raises(ValueError, match=r"Presence value .* out of range"):
         device.set_presence(2)
-    with pytest.raises(ValueError, match="Out of bounds"):
+    with pytest.raises(ValueError, match=r"Treble value .* out of range"):
         device.set_treble(2)
-    with pytest.raises(ValueError, match="Out of bounds"):
+    with pytest.raises(ValueError, match="Voicing value must be 0, 1, or 2"):
         device.set_voicing(5)
 
 

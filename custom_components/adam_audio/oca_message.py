@@ -26,7 +26,7 @@ class Message:
         self.pdu_count = pdu_count
 
     @classmethod
-    def decode(cls, stream: BinaryIO) -> "Message":
+    def decode(cls, stream: BinaryIO) -> Message:
         (
             sync,
             protocol_version,

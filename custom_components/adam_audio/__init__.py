@@ -15,11 +15,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import homeassistant.helpers.config_validation as cv
 from homeassistant.const import Platform
 from homeassistant.core import callback
 
 from .const import (
-    DOMAIN,  # noqa: F401
+    DOMAIN,
     LOGGER,
 )
 from .coordinator import AdamAudioCoordinator
@@ -36,6 +37,8 @@ _CARD_JS = Path(__file__).parent / "www" / "adam-audio-card.js"
 
 _BACKPLATE_URL = "/adam_audio/backplate-card.js"
 _BACKPLATE_JS = Path(__file__).parent / "www" / "backplate-card.js"
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
     Platform.SWITCH,

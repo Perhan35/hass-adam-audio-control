@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Pre-push CI check — mirrors the GitHub Actions test.yml pipeline.
+# Run this before committing to catch issues locally.
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "=== Ruff lint ==="
+ruff check .
+
+echo "=== Ruff format ==="
+ruff format --check .
+
+echo "=== Tests + coverage ==="
+pytest tests/ -v --cov=custom_components.adam_audio --cov-fail-under=90
+
+echo ""
+echo "All checks passed!"

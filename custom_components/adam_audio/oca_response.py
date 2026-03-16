@@ -30,7 +30,7 @@ class Response(PDU):
     @classmethod
     def decode(
         cls, stream: BinaryIO, param_types: list[type] | None = None
-    ) -> "Response":
+    ) -> Response:
         param_types = param_types or []
         _length, handle, status_code, param_count = unpack_from_stream("!IIBB", stream)
 
