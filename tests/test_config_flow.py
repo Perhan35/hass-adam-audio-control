@@ -75,6 +75,40 @@ async def test_user_flow_connection_error(hass: HomeAssistant) -> None:
         assert result["errors"] == {"base": "cannot_connect"}
 
 
+async def test_zeroconf_flow_empty_hostname(hass: HomeAssistant) -> None:
+    """Test zeroconf when hostname is empty (falls back to IP-based device_id)."""
+    discovery_info = ZeroconfServiceInfo(
+        ip_address=IPv4Address(MOCK_HOST),
+        ip_addresses=[IPv4Address(MOCK_HOST)],
+        port=MOCK_PORT,
+        hostname="",
+        type="_oca._udp.local.",
+        name="._oca._udp.local.",
+        properties={},
+    )
+
+    with patch(
+        "custom_components.adam_audio.config_flow.AdamAudioClient",
+    ) as mock_client_cls:
+        client = mock_client_cls.return_value
+        client.async_setup = AsyncMock(return_value=True)
+        client.async_shutdown = AsyncMock()
+        client.device_name = MOCK_DEVICE_NAME
+        client.description = MOCK_DESCRIPTION
+        client.serial = MOCK_SERIAL
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_ZEROCONF},
+            data=discovery_info,
+        )
+        assert result["type"] is FlowResultType.FORM
+
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+        assert result["type"] is FlowResultType.CREATE_ENTRY
+        assert result["data"][CONF_HOST] == MOCK_HOST
+
+
 async def test_zeroconf_flow_success(hass: HomeAssistant) -> None:
     """Test zeroconf discovery with a successful connection."""
     discovery_info = ZeroconfServiceInfo(

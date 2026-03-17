@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from dataclasses import replace
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from homeassistant.components.number import ATTR_VALUE, SERVICE_SET_VALUE
@@ -231,3 +232,186 @@ async def test_group_select_entities(
         blocking=True,
     )
     mock_client.async_set_voicing.assert_called_with(0)
+
+
+@pytest.mark.usefixtures("mock_config_entry", "mock_client")
+async def test_group_switch_turn_off(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """Test group switch turn_off controls all speakers."""
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_OFF,
+        {ATTR_ENTITY_ID: "switch.all_speakers_mute"},
+        blocking=True,
+    )
+    mock_client.async_set_mute.assert_called_with(False)
+
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_OFF,
+        {ATTR_ENTITY_ID: "switch.all_speakers_sleep"},
+        blocking=True,
+    )
+    mock_client.async_set_sleep.assert_called_with(False)
+
+
+@pytest.mark.usefixtures("mock_config_entry", "mock_client")
+async def test_group_select_input(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """Test group input select controls all speakers."""
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    await hass.services.async_call(
+        "select",
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: "select.all_speakers_input_source", ATTR_OPTION: "RCA"},
+        blocking=True,
+    )
+    mock_client.async_set_input.assert_called_with(0)
+
+
+async def test_group_switch_no_coordinators(hass: HomeAssistant) -> None:
+    """Test group switch returns False when no coordinators are loaded."""
+    from custom_components.adam_audio.switch import (
+        AdamAudioGroupMuteSwitch,
+        AdamAudioGroupSleepSwitch,
+    )
+
+    assert AdamAudioGroupMuteSwitch(hass).is_on is False
+    assert AdamAudioGroupSleepSwitch(hass).is_on is False
+
+
+async def test_group_select_no_coordinators(hass: HomeAssistant) -> None:
+    """Test group selects return defaults when no coordinators are loaded."""
+    from custom_components.adam_audio.select import (
+        AdamAudioGroupInputSelect,
+        AdamAudioGroupVoicingSelect,
+    )
+
+    assert AdamAudioGroupInputSelect(hass).current_option == "RCA"
+    assert AdamAudioGroupVoicingSelect(hass).current_option == "Pure"
+
+
+async def test_group_number_no_coordinators(hass: HomeAssistant) -> None:
+    """Test group number returns min value when no coordinators are loaded."""
+    from custom_components.adam_audio.number import (
+        _NUMBER_DESCRIPTORS,
+        AdamAudioGroupNumber,
+    )
+
+    num = AdamAudioGroupNumber(hass, _NUMBER_DESCRIPTORS[0])
+    assert num.native_value == _NUMBER_DESCRIPTORS[0].native_min
+
+
+def test_number_unavailable_parent() -> None:
+    """Test per-device number returns unavailable when parent is unavailable."""
+    from custom_components.adam_audio.entity import AdamAudioEntity
+    from custom_components.adam_audio.number import _NUMBER_DESCRIPTORS, AdamAudioNumber
+
+    entity = object.__new__(AdamAudioNumber)
+    entity._desc = _NUMBER_DESCRIPTORS[0]
+
+    with patch.object(
+        AdamAudioEntity, "available", new_callable=PropertyMock, return_value=False
+    ):
+        assert entity.available is False
+
+
+def test_number_available_null_voicings() -> None:
+    """Test per-device number available when valid_voicings is None."""
+    from custom_components.adam_audio.entity import AdamAudioEntity
+    from custom_components.adam_audio.number import _NUMBER_DESCRIPTORS, AdamAudioNumber
+
+    entity = object.__new__(AdamAudioNumber)
+    entity._desc = replace(_NUMBER_DESCRIPTORS[0], valid_voicings=None)
+
+    with patch.object(
+        AdamAudioEntity, "available", new_callable=PropertyMock, return_value=True
+    ):
+        assert entity.available is True
+
+
+def test_group_number_unavailable_parent() -> None:
+    """Test group number returns unavailable when parent is unavailable."""
+    from custom_components.adam_audio.entity import AdamAudioGroupEntity
+    from custom_components.adam_audio.number import (
+        _NUMBER_DESCRIPTORS,
+        AdamAudioGroupNumber,
+    )
+
+    entity = object.__new__(AdamAudioGroupNumber)
+    entity._desc = _NUMBER_DESCRIPTORS[0]
+
+    with patch.object(
+        AdamAudioGroupEntity, "available", new_callable=PropertyMock, return_value=False
+    ):
+        assert entity.available is False
+
+
+def test_group_number_available_null_voicings() -> None:
+    """Test group number available when valid_voicings is None."""
+    from custom_components.adam_audio.entity import AdamAudioGroupEntity
+    from custom_components.adam_audio.number import (
+        _NUMBER_DESCRIPTORS,
+        AdamAudioGroupNumber,
+    )
+
+    entity = object.__new__(AdamAudioGroupNumber)
+    entity._desc = replace(_NUMBER_DESCRIPTORS[0], valid_voicings=None)
+
+    with patch.object(
+        AdamAudioGroupEntity, "available", new_callable=PropertyMock, return_value=True
+    ):
+        assert entity.available is True
+
+
+@pytest.mark.usefixtures("mock_config_entry", "mock_client")
+async def test_group_resubscribes_new_coordinator(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """Test group entities re-subscribe when a new coordinator appears."""
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "custom_components.adam_audio.coordinator.AdamAudioClient",
+        return_value=mock_client,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    # Inject a second coordinator
+    from custom_components.adam_audio import _coordinators
+
+    mock_coord2 = MagicMock()
+    mock_coord2.client.state = mock_client.state
+    mock_coord2.client.available = True
+    mock_coord2.client.async_set_mute = AsyncMock()
+    mock_coord2.async_add_listener = MagicMock(return_value=lambda: None)
+    _coordinators["fake_entry_2"] = mock_coord2
+
+    # Group turn_on triggers async_write_ha_state -> detects count mismatch -> re-subscribes
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: "switch.all_speakers_mute"},
+        blocking=True,
+    )
+    mock_client.async_set_mute.assert_called_with(True)
+    mock_coord2.client.async_set_mute.assert_called_with(True)
+
+    del _coordinators["fake_entry_2"]

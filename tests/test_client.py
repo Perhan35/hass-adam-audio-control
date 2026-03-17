@@ -1,9 +1,11 @@
 """Tests for ADAM Audio client."""
 
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.adam_audio.client import AdamAudioClient
 
@@ -143,8 +145,96 @@ async def test_client_setters_max_retries_fail(adam_client: AdamAudioClient) -> 
     adam_client._device.set_mute.__name__ = "set_mute"
     adam_client._device.get_mute.__name__ = "get_mute"
 
-    from homeassistant.exceptions import HomeAssistantError
-
     with pytest.raises(HomeAssistantError):
         await adam_client.async_set_mute(True)
     assert adam_client._device.set_mute.call_count == 3
+
+
+async def test_client_fetch_state_critical_exception(
+    adam_client: AdamAudioClient,
+) -> None:
+    """Test fetch_state handles unexpected (non-timeout) exceptions."""
+    adam_client._device.drain.side_effect = RuntimeError("unexpected crash")
+    success = await adam_client.async_fetch_state()
+    assert success is False
+    assert adam_client.available is False
+
+
+async def test_client_fetch_state_no_device(hass: HomeAssistant) -> None:
+    """Test fetch_state returns False when _device is None."""
+    client = AdamAudioClient(hass, "192.168.1.100", 49494)
+    success = await client.async_fetch_state()
+    assert success is False
+
+
+async def test_client_keepalive_oserror_during_fetch(
+    adam_client: AdamAudioClient,
+) -> None:
+    """Test fetch_state recovers when opportunistic keepalive raises OSError."""
+    adam_client._last_keepalive = 0.0
+    adam_client._device.send_keepalive.side_effect = OSError("timeout")
+
+    pdus = []
+    for val in [1, 0, 1, 0, 0, 0, 0, 0]:
+        param = MagicMock()
+        param.value = val
+        pdu = MagicMock()
+        pdu.params = [param]
+        pdus.append(pdu)
+    adam_client._device.get_full_state_pdus.return_value = pdus
+
+    success = await adam_client.async_fetch_state()
+    assert success is True
+
+
+async def test_client_ensure_keepalive_oserror(adam_client: AdamAudioClient) -> None:
+    """Test _ensure_keepalive silently handles OSError when session is stale."""
+    adam_client._last_keepalive = 0.0
+    adam_client._device.send_keepalive.side_effect = OSError("timeout")
+    adam_client._device.get_mute.return_value = True
+
+    await adam_client.async_set_mute(True)
+    adam_client._device.set_mute.assert_called_with(True)
+
+
+async def test_client_verify_mismatch_retries(adam_client: AdamAudioClient) -> None:
+    """Test retry exhaustion when verification never matches."""
+    adam_client.RETRY_DELAY = 0
+    adam_client._device.set_mute.__name__ = "set_mute"
+    adam_client._device.get_mute.return_value = False  # Never matches True
+
+    await adam_client.async_set_mute(True)
+    assert adam_client._device.set_mute.call_count == 3
+    assert adam_client._device.get_mute.call_count == 3
+
+
+async def test_client_verify_read_failure(adam_client: AdamAudioClient) -> None:
+    """Test retry when verification read raises an exception."""
+    adam_client.RETRY_DELAY = 0
+    adam_client._device.set_mute.__name__ = "set_mute"
+    adam_client._device.get_mute.side_effect = RuntimeError("read failed")
+
+    await adam_client.async_set_mute(True)
+    assert adam_client._device.set_mute.call_count == 3
+
+
+async def test_client_async_send_oserror(adam_client: AdamAudioClient) -> None:
+    """Test _async_send raises HomeAssistantError on OSError."""
+    adam_client._last_keepalive = time.monotonic()
+    fn = MagicMock(side_effect=OSError("dead"))
+    fn.__name__ = "test_fn"
+
+    with pytest.raises(HomeAssistantError, match="dead"):
+        await adam_client._async_send(fn)
+    assert adam_client.available is False
+
+
+async def test_client_async_send_success(adam_client: AdamAudioClient) -> None:
+    """Test _async_send succeeds and marks client as available."""
+    adam_client._last_keepalive = time.monotonic()
+    fn = MagicMock()
+    fn.__name__ = "test_fn"
+
+    await adam_client._async_send(fn)
+    assert adam_client.available is True
+    fn.assert_called_once()

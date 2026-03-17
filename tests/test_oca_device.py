@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from custom_components.adam_audio.oca_command import Command
 from custom_components.adam_audio.oca_device import Device
+from custom_components.adam_audio.oca_keepalive import Keepalive
 
 
 @pytest.fixture
@@ -167,3 +169,42 @@ def test_device_receive_response_errors(
     msg.pdu_count = 0
     with pytest.raises(ValueError, match="Expected at least 1 PDU"):
         device.receive_response()
+
+
+def test_device_close_oserror(mock_socket: MagicMock) -> None:
+    """Test close() silently handles OSError."""
+    mock_socket.close.side_effect = OSError("already closed")
+    device = Device.from_address("192.168.1.100", 49494)
+    device.close()  # Should not raise
+
+
+def test_device_drain_finally_oserror(mock_socket: MagicMock) -> None:
+    """Test drain() handles OSError in finally block when restoring timeout."""
+    mock_socket.gettimeout.return_value = 10.0
+    mock_socket.recvfrom.side_effect = BlockingIOError()
+    mock_socket.settimeout.side_effect = [None, OSError("bad fd")]
+    device = Device.from_address("192.168.1.100", 49494)
+    device.drain()  # Should not raise
+
+
+def test_device_send_pdus_empty(mock_socket: MagicMock) -> None:
+    """Test send_pdus raises ValueError for empty list."""
+    device = Device.from_address("192.168.1.100", 49494)
+    with pytest.raises(ValueError, match="must not be empty"):
+        device.send_pdus([])
+
+
+def test_device_send_pdus_mixed_types(mock_socket: MagicMock) -> None:
+    """Test send_pdus raises ValueError for mixed PDU types."""
+    device = Device.from_address("192.168.1.100", 49494)
+    cmd = Command(handle=1, target=1, method_level=1, method_index=1)
+    ka = Keepalive(timeout=30)
+    with pytest.raises(ValueError, match="same type"):
+        device.send_pdus([cmd, ka])
+
+
+def test_device_set_timeout(mock_socket: MagicMock) -> None:
+    """Test set_timeout sets socket receive timeout."""
+    device = Device.from_address("192.168.1.100", 49494)
+    device.set_timeout(5.0)
+    mock_socket.settimeout.assert_called_with(5.0)

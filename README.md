@@ -233,7 +233,7 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 - [x] **Full test suite**: Add comprehensive tests for all entity platforms (switch, select, number), group entity logic, and coordinator update cycle. See [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) for the testing framework.
 - [ ] **Add translation support**
 - [x] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
-- [ ] **Rename Lovelace custom cards**
+- [ ] **Rename Lovelace custom cards**: alternative, backplate, backplate-alternative
 - [?] **Add support for more ADAM Audio speaker models**: tested with A4V only
 - [ ] **Enhance connectivity and error handling**:
   - [x] add retry logic,
