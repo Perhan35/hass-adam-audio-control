@@ -73,40 +73,18 @@ async def test_unload_entry(
 
 
 async def test_async_setup_registers_cards(hass: HomeAssistant) -> None:
-    """Test async_setup registers static paths and lovelace resources."""
+    """Test async_setup registers static paths and js urls."""
     hass.http = MagicMock()
-
-    mock_resources = MagicMock()
-    mock_resources.async_get_info = AsyncMock()
-    mock_resources.async_create_item = AsyncMock()
-    mock_resources.async_items.return_value = []
-    hass.data["lovelace"] = MagicMock()
-    hass.data["lovelace"].resources = mock_resources
 
     result = await async_setup(hass, {})
     assert result is True
     assert hass.http.register_static_path.call_count == 3
 
-    hass.bus.async_fire("homeassistant_started")
-    await hass.async_block_till_done()
-
-    assert mock_resources.async_create_item.call_count == 3
-
-
-async def test_async_setup_resource_exception(hass: HomeAssistant) -> None:
-    """Test _add_resource handles exceptions gracefully."""
-    hass.http = MagicMock()
-
-    hass.data["lovelace"] = MagicMock()
-    hass.data["lovelace"].resources.async_get_info = AsyncMock(
-        side_effect=RuntimeError("boom")
-    )
-
-    result = await async_setup(hass, {})
-    assert result is True
-
-    hass.bus.async_fire("homeassistant_started")
-    await hass.async_block_till_done()
+    assert "frontend_extra_module_url" in hass.data
+    urls = hass.data["frontend_extra_module_url"]
+    assert any("adam-audio-card.js" in url for url in urls)
+    assert any("backplate-card.js" in url for url in urls)
+    assert any("adam-audio-backplate-card.js" in url for url in urls)
 
 
 async def test_async_reload_entry(hass: HomeAssistant, mock_config_entry) -> None:

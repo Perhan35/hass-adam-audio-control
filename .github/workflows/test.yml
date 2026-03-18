@@ -54,4 +54,4 @@ jobs:
 
     - name: Check coverage threshold
       run: |
-        pytest tests/ --cov=custom_components.adam_audio --cov-fail-under=90
+        pytest tests/ --cov=custom_components.adam_audio --cov-fail-under=95

@@ -80,6 +80,9 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
                 ]
             )
 
+    if "frontend_extra_module_url" not in hass.data:
+        hass.data["frontend_extra_module_url"] = set()
+
     add_extra_js_url(hass, _CARD_URL)
     add_extra_js_url(hass, _BACKPLATE_URL)
     add_extra_js_url(hass, _BACKPLATE_2_URL)

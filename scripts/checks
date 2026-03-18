@@ -13,7 +13,7 @@ echo "=== Ruff format ==="
 ruff format .
 
 echo "=== Tests + coverage ==="
-pytest tests/ -v --cov=custom_components.adam_audio --cov-fail-under=90
+pytest tests/ -v --cov=custom_components.adam_audio --cov-fail-under=95
 
 echo ""
 echo "All checks passed!"
