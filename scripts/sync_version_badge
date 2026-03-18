@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Pre-commit hook: sync the version badge in README.md from manifest.json
+
+set -euo pipefail
+
+MANIFEST="custom_components/adam_audio/manifest.json"
+README="README.md"
+
+VERSION=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['version'])")
+
+# Replace the version badge (matches: badge/version-<anything>-green.svg)
+sed -i '' -E "s|badge/version-[^)]*-green\.svg|badge/version-${VERSION}-green.svg|" "$README"
+
+git add "$README"

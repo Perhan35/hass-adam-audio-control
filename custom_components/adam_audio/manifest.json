@@ -13,8 +13,11 @@
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Perhan35/hass-adam-audio-control/issues",
-  "version": "0.0.2",
+  "version": "0.1.1",
   "zeroconf": [
-    { "type": "_oca._udp.local.", "name": "aseries*" }
+    {
+      "type": "_oca._udp.local.",
+      "name": "aseries*"
+    }
   ]
 }
