@@ -1,26 +1,57 @@
 # Contributing to ADAM Audio Control
 
-Everyone is invited to contribute to this project. Here are some tips to get you started.
+Everyone is invited to contribute to this project. Here's how to get started.
 
-## Development Environment
+---
 
-1. Clone the repository.
-2. Open in VS Code with the Dev Container.
-3. Run `scripts/develop` to start Home Assistant with the integration loaded.
+## Getting Started
 
-## Development Workflow
+1. Clone the repository
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. Install pre-commit hooks:
+   ```bash
+   pre-commit install
+   ```
+4. Open in VS Code with the Dev Container, or run directly:
+   ```bash
+   scripts/develop
+   ```
 
-1. Create a feature branch from `main`.
-2. Make your changes.
-3. Run `scripts/lint` to format and lint your code.
-4. Write tests for your changes: `pytest tests/ -v --cov=custom_components.adam_audio`
-5. Test your changes by running `scripts/develop` and checking the UI.
-6. Create a Pull Request.
+---
 
-## Code Quality
+## Workflow
 
-This project uses [ruff](https://github.com/astral-sh/ruff) for linting and formatting. Run the linter before submitting:
+1. Create a feature branch from `main`
+2. Make your changes
+3. Lint, test, and verify:
+   ```bash
+   ./scripts/checks        # runs lint + tests + coverage in one go
+   ```
+4. Test the UI by running `scripts/develop`
+5. Open a Pull Request
+
+---
+
+## Scripts
+
+| Script | Description |
+|---|---|
+| `scripts/develop` | Start Home Assistant with the integration loaded |
+| `scripts/lint` | Format and lint with [ruff](https://github.com/astral-sh/ruff) |
+| `scripts/checks` | Run all checks (lint + tests + coverage) |
+| `scripts/browse_mdns` | Debug mDNS / zeroconf discovery |
+
+---
+
+## Testing
 
 ```bash
-scripts/lint
+pytest tests/ -v --cov=custom_components.adam_audio
 ```
+
+Coverage must stay at **95%** or above — CI will fail otherwise.

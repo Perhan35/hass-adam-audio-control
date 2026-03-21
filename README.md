@@ -1,10 +1,10 @@
 # Home Assistant - ADAM Audio Control (A series)
 
-[![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue.svg)](https://www.home-assistant.io)
 [![Test and Lint](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml/badge.svg)](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-0.1.1-green.svg)](custom_components/adam_audio/manifest.json)
-<!-- [![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/) -->
+[![Version](https://img.shields.io/badge/version-0.1.2-green.svg)](custom_components/adam_audio/manifest.json)
+[![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/)
 
 Home Assistant integration for **ADAM Audio A-Series studio monitors** (A4V, A7V, etc.) via the AES70/OCA protocol over UDP.
 
@@ -43,6 +43,8 @@ Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
 ![Alternative dashboard cards](screenshots/alternative_card.png)
 *Alternative dashboard cards using the Adam Audio Card*
 
+> More alternative dashboard cards will be added soon.
+
 ---
 
 ## Requirements
@@ -55,14 +57,21 @@ Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
 
 ## Installation
 
-### Option A — HACS (recommended)
+### Option A — HACS auto (recommended)
+
+1. Open HACS → **Integrations**
+2. Search for **ADAM Audio Control**
+3. Click **Download**
+4. Restart Home Assistant
+
+### Option B — HACS manual
 
 1. Open HACS → **Integrations** → ⋮ → **Custom repositories**
 2. Add `https://github.com/Perhan35/hass-adam-audio-control` as type **Integration**
 3. Search for **ADAM Audio**, click **Download**
 4. Restart Home Assistant
 
-### Option B — Manual
+### Option C — Fully manual
 
 1. Copy the `custom_components/adam_audio/` folder into your HA config directory:
    ```
@@ -198,7 +207,7 @@ automation:
     - condition: time
       weekday: [mon, tue, wed, thu, fri]
   action:
-    - service: switch.turn_on
+    - service: switch.turn_off
       target:
         entity_id: switch.all_speakers_sleep
 ```
@@ -231,12 +240,12 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 
 ## TODO
 
-- [x] **Full test suite**: Add comprehensive tests for all entity platforms (switch, select, number), group entity logic, and coordinator update cycle. See [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) for the testing framework.
-- [ ] **Add translation support**
+- [ ] **Rename dashboard custom cards**: alternative, backplate, backplate-alternative
+- [x] **Add translation support**
+- [x] **Full test suite**: Add tests for all entity platforms, group entity logic, and coordinator update cycle.
 - [x] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
-- [ ] **Rename Lovelace custom cards**: alternative, backplate, backplate-alternative
 - [?] **Add support for more ADAM Audio speaker models**: tested with A4V only
-- [ ] **Enhance connectivity and error handling**:
+- [~] **Enhance connectivity and error handling**:
   - [x] add retry logic,
   - [x] implement a proper keepalive mechanism,
   - [ ] better error messages

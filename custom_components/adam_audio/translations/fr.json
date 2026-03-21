@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter une enceinte ADAM Audio",
+        "description": "Entrez l'adresse IP de votre enceinte ADAM Audio A-Series. Si vous ne connaissez pas le port, laissez la valeur par défaut ({default_port}).",
+        "data": {
+          "host": "Adresse IP",
+          "port": "Port UDP"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Enceinte ADAM Audio détectée",
+        "description": "**{name}** trouvée à l'adresse `{host}`. Voulez-vous l'ajouter à Home Assistant ?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter à l'appareil. Vérifiez que l'enceinte est allumée et accessible sur votre réseau local, puis réessayez."
+    },
+    "abort": {
+      "already_configured": "Cette enceinte est déjà configurée. Son adresse réseau a été mise à jour."
+    }
+  },
+  "entity": {
+    "switch": {
+      "mute": {
+        "name": "Mute"
+      },
+      "sleep": {
+        "name": "Veille"
+      }
+    },
+    "select": {
+      "input_source": {
+        "name": "Source d'entrée"
+      },
+      "voicing": {
+        "name": "Voicing"
+      }
+    },
+    "number": {
+      "bass": {
+        "name": "Graves"
+      },
+      "desk": {
+        "name": "Bureau"
+      },
+      "presence": {
+        "name": "Présence"
+      },
+      "treble": {
+        "name": "Aigus"
+      }
+    }
+  }
+}
