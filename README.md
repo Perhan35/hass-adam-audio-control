@@ -59,6 +59,8 @@ Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
 
 ### Option A — HACS auto (recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Perhan35&repository=hass-adam-audio-control&category=integration)
+
 1. Open HACS → **Integrations**
 2. Search for **ADAM Audio Control**
 3. Click **Download**
