@@ -3,7 +3,7 @@
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue.svg)](https://www.home-assistant.io)
 [![Test and Lint](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml/badge.svg)](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-0.1.2-green.svg)](custom_components/adam_audio/manifest.json)
+[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](custom_components/adam_audio/manifest.json)
 [![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/)
 
 Home Assistant integration for **ADAM Audio A-Series studio monitors** (A4V, A7V, etc.) via the AES70/OCA protocol over UDP.
@@ -40,8 +40,14 @@ Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
 ![Dashboard entities](screenshots/dashboard.png)
 *All entities for Left, All Speakers and Right monitors in the HA dashboard*
 
-![Alternative dashboard cards](screenshots/alternative_card.png)
-*Alternative dashboard cards using the Adam Audio Card*
+![Backplate dashboard cards](screenshots/backplate_card.png)
+*Dashboard cards using the Backplate Card (`adam-audio-backplate-card`)*
+
+<!-- ![Alternative Backplate dashboard cards](screenshots/backplate_card_alt.png)
+*Alternative dashboard cards using the Backplate Card Alternative (`adam-audio-backplate-card-alt`)* -->
+
+![Futuristic dashboard cards](screenshots/futuristic_card.png)
+*Dashboard cards using the Adam Audio Card (`adam-audio-card`)*
 
 > More alternative dashboard cards will be added soon.
 
@@ -120,7 +126,7 @@ All cards use the **same configuration schema**, so you can switch between them 
 
 - `custom:adam-audio-card`
 - `custom:adam-audio-backplate-card`
-- `custom:backplate-card`
+- `custom:adam-audio-backplate-card-alt` (coming soon)
 
 ### ADAM Audio Card (`custom:adam-audio-card`)
 
@@ -164,12 +170,12 @@ entities:
   treble:   number.left_treble
 ```
 
-### All Speakers Group
+### All Speakers Group (with Backplate Card Alternative)
 
 All cards work with the **All Speakers** group entities (prefixed `all_speakers_`):
 
 ```yaml
-type: custom:adam-audio-backplate-card
+type: custom:adam-audio-backplate-card-alt
 title: All Monitors
 entities:
   mute:     switch.all_speakers_mute
@@ -242,12 +248,11 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 
 ## TODO
 
-- [ ] **Rename dashboard custom cards**: alternative, backplate, backplate-alternative
 - [x] **Add translation support**
 - [x] **Full test suite**: Add tests for all entity platforms, group entity logic, and coordinator update cycle.
 - [x] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
-- [?] **Add support for more ADAM Audio speaker models**: tested with A4V only
-- [~] **Enhance connectivity and error handling**:
+- [x] **Add support for more ADAM Audio speaker models**: tested with A4V only
+- [x] **Enhance connectivity and error handling**:
   - [x] add retry logic,
   - [x] implement a proper keepalive mechanism,
   - [ ] better error messages

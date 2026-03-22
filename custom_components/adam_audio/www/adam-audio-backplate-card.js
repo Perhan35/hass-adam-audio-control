@@ -1,7 +1,7 @@
 /**
  * adam-audio-backplate-card.js
- * Custom Lovelace card replicating the physical backplate of ADAM Audio A-Series monitors.
- *
+ * Custom Lovelace card for ADAM Audio A-Series monitors replicating the physical backplate.
+*
  * Card config (same schema as adam-audio-card):
  *
  *   type: custom:adam-audio-backplate-card
@@ -16,1026 +16,676 @@
  *     presence: number.left_presence
  *     treble:   number.left_treble
  */
-
 (function () {
-const BP_VERSION = "1.0.0";
+  const CARD_VERSION = "2.0.0";
 
-/* ── EQ band definitions ─────────────────────────────────────────────────── */
 
-const EQ_BANDS = {
-  bass:     { label: "Bass",     min: -2, max: 1 },
-  desk:     { label: "Desk",     min: -2, max: 0 },
-  presence: { label: "Presence", min: -1, max: 1 },
-  treble:   { label: "Treble",   min: -1, max: 1 },
-};
-
-/* ── SVG curves & LED layout ─────────────────────────────────────────────── */
-
-// X positions for each EQ band in the SVG viewBox (0 0 320 80)
-const BAND_X = { bass: 50, desk: 130, presence: 210, treble: 275 };
-
-// Y positions: map dB value to vertical position (higher dB = higher on panel)
-// Range: y=14 (top, highest dB) to y=66 (bottom, lowest dB)
-function dbToY(db) {
-  // Map from dB range [-2, +1] to y range [66, 14]
-  // -2 → 66, -1 → 48.7, 0 → 31.3, +1 → 14
-  return 66 - ((db + 2) / 3) * 52;
-}
-
-// Build LED positions for each band
-function bandLeds(key) {
-  const band = EQ_BANDS[key];
-  const x = BAND_X[key];
-  const leds = [];
-  for (let db = band.min; db <= band.max; db++) {
-    leds.push({ x, y: dbToY(db), db });
-  }
-  return leds;
-}
-
-// Generate the frequency-response curve SVG paths
-// 4 curves that weave between LED positions, crossing between bands
-function curvePaths() {
-  // Curve 1: upper weave — high at bass, dips at desk, rises at presence/treble
-  const c1 = `M 0,14 C 20,14 35,14 50,14 C 70,14 100,48 130,49 C 155,49 185,14 210,14 C 235,14 255,14 275,14 C 295,14 315,16 320,16`;
-  // Curve 2: mid-upper — 0dB level, gentle undulation
-  const c2 = `M 0,31 C 20,31 35,31 50,31 C 70,31 100,31 130,31 C 155,31 185,31 210,31 C 235,31 255,31 275,31 C 295,31 315,33 320,33`;
-  // Curve 3: mid-lower weave — low at bass, rises at desk, dips at presence
-  const c3 = `M 0,49 C 20,49 35,49 50,49 C 70,49 100,14 130,14 C 155,14 185,49 210,49 C 235,49 255,49 275,49 C 295,49 315,47 320,47`;
-  // Curve 4: bottom — lowest dB positions
-  const c4 = `M 0,66 C 20,66 35,66 50,66 C 70,66 100,66 130,66 C 155,66 185,66 210,66 C 235,66 255,66 275,66 C 295,66 315,64 320,64`;
-  return [c1, c2, c3, c4];
-}
-
-/* ── CSS ─────────────────────────────────────────────────────────────────── */
-
-const BP_STYLES = `
+  const STYLES = `
   :host {
     display: block;
-    font-family: 'Helvetica Neue', Arial, sans-serif;
+    --bp-bg: #1c1c1c;
+    --bp-text: #e0e0e0;
+    --bp-green: #22c55e;
+    --bp-green-glow: rgba(34, 197, 94, 0.6);
+    --bp-led-off: #111;
+    --bp-btn-face: linear-gradient(135deg, #3a3a3a, #1a1a1a);
+    --bp-btn-edge: #0a0a0a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
 
-  /* ── Backplate card ────────────────────────────────────────────────────── */
-  .backplate {
-    max-width: 360px;
-    margin: 0 auto;
-    background: linear-gradient(
-      180deg,
-      #2a2a2e 0%,
-      #242428 30%,
-      #1e1e22 60%,
-      #1a1a1e 100%
-    );
-    border: 1px solid #3a3a3e;
-    border-radius: 6px;
+  .card {
+    background: var(--bp-bg);
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.08"/></svg>');
+    border-radius: 12px;
+    border: 1px solid #333;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
     overflow: hidden;
-    color: #bbb;
+    color: var(--bp-text);
     user-select: none;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.04),
-      0 4px 16px rgba(0,0,0,0.5);
-    /* Brushed metal texture */
-    background-image:
-      repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 1px,
-        rgba(255,255,255,0.008) 1px,
-        rgba(255,255,255,0.008) 2px
-      );
+    padding-bottom: 20px;
   }
 
-  .backplate.unavailable {
-    opacity: 0.45;
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .title {
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+  }
+  .power-row {
+    display: flex;
+    gap: 8px;
+  }
+  .power-toggle {
+    background: #2a2a2a;
+    border: 1px solid #111;
+    border-radius: 4px;
+    color: #aaa;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .power-toggle:active {
+    background: #1e1e1e;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .power-toggle.active-mute {
+    color: #ef4444;
+    text-shadow: 0 0 5px rgba(239,68,68,0.5);
+  }
+  .power-toggle.active-sleep {
+    color: #f59e0b;
+    text-shadow: 0 0 5px rgba(245,158,11,0.5);
+  }
+
+  /* Body */
+  .body {
+    padding: 0px 10px 0px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Room Adaptation */
+  .room-adaptation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+    text-align: center;
+    color: #eee;
+  }
+
+  .eq-graphic {
+    position: relative;
+    width: 315px;
+    height: 120px;
+    margin: 0 auto;
+  }
+
+  .eq-graphic svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     pointer-events: none;
   }
 
-  /* ── Header ────────────────────────────────────────────────────────────── */
-  .bp-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    background: rgba(0,0,0,0.25);
-    border-bottom: 1px solid #333;
-  }
-
-  .bp-header-left {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-
-  .bp-brand {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: #999;
-  }
-
-  .bp-name {
-    font-size: 9px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #666;
-  }
-
-  .bp-header-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .bp-status-label {
-    font-size: 8px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #555;
-  }
-
-  .bp-status-led {
+  .led {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #1a3a1a;
-    transition: background 0.3s, box-shadow 0.3s;
+    background: var(--bp-led-off);
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.1);
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .led.on {
+    background: var(--bp-green);
+    box-shadow: 0 0 6px var(--bp-green-glow), inset 0 1px 2px rgba(255,255,255,0.4);
   }
 
-  .bp-status-led.online {
-    background: #22ff22;
-    box-shadow: 0 0 4px #22ff22, 0 0 8px rgba(34,255,34,0.4);
+  .eq-led {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
   }
 
-  .bp-status-led.muted {
-    background: #ff3333;
-    box-shadow: 0 0 4px #ff3333, 0 0 8px rgba(255,51,51,0.4);
+  .hardware-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bp-btn-face);
+    border: 2px solid var(--bp-btn-edge);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    outline: none;
+  }
+  .hardware-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.6), inset 0 2px 4px rgba(0,0,0,0.8);
   }
 
-  .bp-status-led.sleeping {
-    animation: led-blink-green 1.2s ease-in-out infinite;
+  .eq-labels {
+    position: relative;
+    width: 315px;
+    height: 60px;
+    margin: 4px auto 0;
   }
 
-  .bp-status-led.offline {
-    background: #333;
-    box-shadow: none;
+  .eq-col-label {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 60px;
+  }
+  .eq-label-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: #ccc;
   }
 
-  @keyframes led-blink-green {
-    0%, 100% { background: #22ff22; box-shadow: 0 0 4px #22ff22, 0 0 8px rgba(34,255,34,0.4); }
-    50% { background: #0a4a0a; box-shadow: none; }
+  /* Dividers */
+  .section-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 8px 0;
+    width: 100%;
   }
 
-  /* ── Panel body ────────────────────────────────────────────────────────── */
-  .bp-panel {
-    padding: 14px 16px 16px;
+  .vertical-divider {
+    width: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    height: 134px;
+    margin-left: 0px;
+    margin-right: 8px;
+  }
+
+  /* Bottom Row: Audio IN + Voicing */
+  .bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  /* Audio IN */
+  .audio-in {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
 
-  /* ── Section title (engraved look) ─────────────────────────────────────── */
-  .bp-section-title {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: #555;
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.04);
-    text-align: center;
-    margin-bottom: 6px;
+  .audio-in-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
-
-  .bp-divider {
-    height: 1px;
-    background: #111;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.03);
-  }
-
-  /* ── Room Adaptation section ───────────────────────────────────────────── */
-  .bp-room-adaptation {
+  .input-jacks {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 16px;
   }
-
-  .bp-room-adaptation.disabled {
-    opacity: 0.35;
-    pointer-events: none;
+  .jack-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
-
-  .bp-curves-container {
+  .xlr-port {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #0a0a0a;
+    border: 4px solid #555;
     position: relative;
-    width: 100%;
+    box-shadow: inset 0 8px 12px rgba(0,0,0,1), 0 2px 4px rgba(100,100,100,0.2), 0 4px 8px rgba(0,0,0,0.6);
   }
-
-  .bp-curves-svg {
-    width: 100%;
-    height: auto;
-    display: block;
+  .xlr-pins {
+    position: absolute;
+    width: 5px; height: 5px;
+    background: #d4af37;
+    border-radius: 50%;
+    box-shadow: -1px -1px 2px rgba(0,0,0,0.8);
   }
+  .xlr-pin-1 { top: 16px; left: 11px; }
+  .xlr-pin-2 { top: 16px; right: 11px; }
+  .xlr-pin-3 { bottom: 10px; left: 18.5px; }
 
-  .bp-curves-svg .curve-line {
-    fill: none;
-    stroke: #3a3a3a;
-    stroke-width: 1;
-    opacity: 0.7;
-  }
-
-  .bp-curves-svg .led-dot {
-    cursor: pointer;
-    transition: fill 0.2s, filter 0.2s;
-  }
-
-  .bp-curves-svg .led-dot.off {
-    fill: #1a3a1a;
-    filter: none;
-  }
-
-  .bp-curves-svg .led-dot.on {
-    fill: #22ff22;
-    filter: drop-shadow(0 0 3px #22ff22) drop-shadow(0 0 6px rgba(34,255,34,0.5));
-  }
-
-  .bp-curves-svg .led-dot:hover {
-    fill: #44ff44;
-    filter: drop-shadow(0 0 4px #44ff44);
-  }
-
-  .bp-eq-labels {
-    display: flex;
-    justify-content: space-around;
-    padding: 0 8px;
-  }
-
-  .bp-eq-label {
-    font-size: 8px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #555;
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.03);
-    text-align: center;
-    flex: 1;
-  }
-
-  /* ── Toggle area ───────────────────────────────────────────────────────── */
-  .bp-toggle-area {
+  .rca-port {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #b89b47;
+    position: relative;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.4);
+    margin-left: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 4px 0;
-    cursor: pointer;
   }
-
-  .bp-toggle-area:hover .bp-toggle-label {
-    color: #aaa;
+  .rca-inner {
+    width: 14px;
+    height: 14px;
+    background: #eee;
+    border-radius: 50%;
+    border: 2px solid #8c7322;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-
-  .bp-toggle-label {
-    font-size: 8px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: #555;
-    transition: color 0.15s;
-  }
-
-  .bp-toggle-indicator {
+  .rca-hole {
     width: 6px;
     height: 6px;
+    background: #000;
     border-radius: 50%;
-    background: #1a3a1a;
-    transition: all 0.2s;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
   }
 
-  .bp-toggle-indicator.on {
-    background: #22ff22;
-    box-shadow: 0 0 3px #22ff22, 0 0 6px rgba(34,255,34,0.4);
+  .jack-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #ddd;
+    font-weight: 600;
   }
 
-  /* ── Audio IN section ──────────────────────────────────────────────────── */
-  .bp-audio-in {
+  .input-select-btn {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-  }
-
-  .bp-connectors {
-    display: flex;
-    justify-content: center;
-    gap: 32px;
-    align-items: center;
-  }
-
-  .bp-connector {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .bp-connector svg {
-    width: 48px;
-    height: 48px;
-  }
-
-  .bp-connector-info {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .bp-connector-label {
-    font-size: 8px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #666;
-  }
-
-  .bp-led {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-
-  .bp-led.off {
-    background: #1a3a1a;
-    box-shadow: none;
-  }
-
-  .bp-led.on {
-    background: #22ff22;
-    box-shadow: 0 0 3px #22ff22, 0 0 6px rgba(34,255,34,0.4);
-  }
-
-  .bp-led.red-on {
-    background: #ff3333;
-    box-shadow: 0 0 3px #ff3333, 0 0 6px rgba(255,51,51,0.4);
-  }
-
-  .bp-led.amber-on {
-    background: #ffaa00;
-    box-shadow: 0 0 3px #ffaa00, 0 0 6px rgba(255,170,0,0.4);
-  }
-
-  .bp-input-btn-area {
-    display: flex;
-    justify-content: center;
-  }
-
-  .bp-input-btn {
-    display: flex;
     align-items: center;
     gap: 8px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 6px 14px;
-    border-radius: 4px;
-    transition: background 0.15s;
+    margin-top: 10px;
   }
 
-  .bp-input-btn:hover {
-    background: rgba(255,255,255,0.04);
-  }
-
-  .bp-input-btn:active {
-    transform: scale(0.97);
-  }
-
-  .bp-input-btn-circle {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 40% 35%, #3a3a3e, #1a1a1e 80%);
-    border: 1px solid #555;
-    box-shadow: inset 0 2px 3px rgba(0,0,0,0.5);
-    flex-shrink: 0;
-  }
-
-  .bp-input-btn:active .bp-input-btn-circle {
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
-  }
-
-  .bp-input-btn-label {
-    font-size: 8px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #555;
-  }
-
-  /* ── Voicing section ───────────────────────────────────────────────────── */
-  .bp-voicing {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .bp-voicing-options {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-  }
-
-  .bp-voicing-opt {
+  /* Voicing */
+  .voicing {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.12s;
+    gap: 12px;
   }
-
-  .bp-voicing-opt:hover {
-    background: rgba(255,255,255,0.04);
+  .voicing-leds {
+    display: flex;
+    gap: 16px;
   }
-
-  .bp-voicing-label {
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #555;
-    transition: color 0.15s;
-  }
-
-  .bp-voicing-opt.active .bp-voicing-label {
+  .v-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
     color: #ccc;
   }
-
-  /* ── Utility strip (mute + power) ──────────────────────────────────────── */
-  .bp-utility-strip {
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    padding: 6px 0 2px;
-  }
-
-  .bp-switch-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-  }
-
-  .bp-switch-group:hover .bp-switch-label {
-    color: #aaa;
-  }
-
-  .bp-switch-label {
-    font-size: 7px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: #555;
-    transition: color 0.15s;
-  }
-
-  /* ── Toggle (DIP) switch for MUTE ──────────────────────────────────────── */
-  .bp-toggle-sw {
-    width: 18px;
-    height: 28px;
-    background: #111;
-    border: 1px solid #444;
-    border-radius: 3px;
-    position: relative;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
-  }
-
-  .bp-toggle-sw .toggle-handle {
-    position: absolute;
-    width: 14px;
-    height: 12px;
-    left: 1px;
-    background: linear-gradient(180deg, #666, #444);
-    border: 1px solid #555;
-    border-radius: 2px;
-    transition: top 0.15s ease;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
-  }
-
-  .bp-toggle-sw.off .toggle-handle {
-    top: 1px;
-  }
-
-  .bp-toggle-sw.on .toggle-handle {
-    top: 13px;
-  }
-
-  /* ── Rocker switch for POWER ───────────────────────────────────────────── */
-  .bp-rocker-sw {
-    width: 36px;
-    height: 20px;
-    background: #111;
-    border: 1px solid #444;
-    border-radius: 3px;
-    position: relative;
-    overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
-  }
-
-  .bp-rocker-body {
-    position: absolute;
-    inset: 1px;
-    display: flex;
-    transition: transform 0.15s ease;
-    transform-origin: center center;
-  }
-
-  .bp-rocker-body .rocker-half {
-    flex: 1;
+  .v-title-label {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 6px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #555;
+    gap: 8px;
   }
 
-  .bp-rocker-sw.on .bp-rocker-body {
-    background: linear-gradient(90deg, #333 0%, #222 40%, #181818 100%);
-  }
-
-  .bp-rocker-sw.off .bp-rocker-body {
-    background: linear-gradient(90deg, #181818 0%, #222 60%, #333 100%);
-  }
-
-  .bp-rocker-sw.on .rocker-half.on-label {
-    color: #aaa;
-  }
-
-  .bp-rocker-sw.off .rocker-half.off-label {
-    color: #aaa;
-  }
-
-  .bp-rocker-sw .rocker-divider {
-    width: 1px;
-    height: 100%;
-    background: #444;
-    flex-shrink: 0;
-  }
-
-  /* ── Touch optimization ────────────────────────────────────────────────── */
-  .bp-switch-group,
-  .bp-voicing-opt,
-  .bp-toggle-area,
-  .bp-input-btn,
-  .bp-curves-svg .led-dot {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-  }
+  .card.unavailable { opacity: 0.5; pointer-events: none; }
 `;
 
-/* ── SVG: XLR connector ──────────────────────────────────────────────────── */
-
-const SVG_XLR = `
-<svg viewBox="0 0 48 48" fill="none">
-  <circle cx="24" cy="24" r="20" fill="#111" stroke="#555" stroke-width="1"/>
-  <circle cx="24" cy="24" r="16" fill="none" stroke="#333" stroke-width="0.5"/>
-  <!-- 3 pins -->
-  <circle cx="24" cy="15" r="2.5" fill="#666" stroke="#888" stroke-width="0.5"/>
-  <circle cx="17" cy="28" r="2.5" fill="#666" stroke="#888" stroke-width="0.5"/>
-  <circle cx="31" cy="28" r="2.5" fill="#666" stroke="#888" stroke-width="0.5"/>
-  <!-- Keyway notch -->
-  <rect x="22" y="36" width="4" height="4" rx="1" fill="#222" stroke="#444" stroke-width="0.5"/>
-</svg>`;
-
-/* ── SVG: RCA connector ──────────────────────────────────────────────────── */
-
-const SVG_RCA = `
-<svg viewBox="0 0 48 48" fill="none">
-  <circle cx="24" cy="24" r="14" fill="none" stroke="#555" stroke-width="1.5"/>
-  <circle cx="24" cy="24" r="9" fill="none" stroke="#444" stroke-width="0.5"/>
-  <circle cx="24" cy="24" r="3" fill="#666" stroke="#888" stroke-width="0.5"/>
-</svg>`;
-
-/* ── Card element ────────────────────────────────────────────────────────── */
-
-class AdamAudioBackplateCard extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-    this._config = {};
-    this._hass = null;
-    this._rendered = false;
-  }
-
-  /* ── HACS / Lovelace metadata ───────────────────────────────────────── */
-
-  static getConfigElement() {
-    return document.createElement("div");
-  }
-
-  static getStubConfig() {
-    return {
-      title: "Studio Monitor",
-      entities: {
-        mute:     "switch.left_mute",
-        sleep:    "switch.left_sleep",
-        input:    "select.left_input_source",
-        voicing:  "select.left_voicing",
-        bass:     "number.left_bass",
-        desk:     "number.left_desk",
-        presence: "number.left_presence",
-        treble:   "number.left_treble",
-      },
-    };
-  }
-
-  /* ── Config ─────────────────────────────────────────────────────────── */
-
-  setConfig(config) {
-    if (!config.entities) throw new Error("adam-audio-backplate-card: 'entities' is required.");
-    this._config = config;
-    this._rendered = false;
-  }
-
-  get _entities() { return this._config.entities || {}; }
-
-  /* ── HA state ───────────────────────────────────────────────────────── */
-
-  set hass(hass) {
-    this._hass = hass;
-    if (!this._rendered) {
-      this._build();
-      this._rendered = true;
+  class BackplateCard extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this._config = {};
+      this._hass = null;
+      this._rendered = false;
     }
-    this._update();
-  }
 
-  /* ── Build DOM once ─────────────────────────────────────────────────── */
+    static getStubConfig() {
+      return {
+        title: "Left Monitor",
+        entities: {
+          mute: "switch.left_mute",
+          sleep: "switch.left_sleep",
+          input: "select.left_input_source",
+          voicing: "select.left_voicing",
+          bass: "number.left_bass",
+          desk: "number.left_desk",
+          presence: "number.left_presence",
+          treble: "number.left_treble",
+        },
+      };
+    }
 
-  _build() {
-    const shadow = this.shadowRoot;
-    shadow.innerHTML = "";
+    setConfig(config) {
+      if (!config.entities) throw new Error("adam-audio-backplate-card: 'entities' is required.");
+      this._config = config;
+      this._rendered = false;
+    }
 
-    const style = document.createElement("style");
-    style.textContent = BP_STYLES;
-    shadow.appendChild(style);
+    get _entities() { return this._config.entities || {}; }
 
-    const tpl = document.createElement("div");
-    tpl.innerHTML = this._template();
-    shadow.appendChild(tpl.firstElementChild);
+    set hass(hass) {
+      this._hass = hass;
+      if (!this._rendered) {
+        this._build();
+        this._rendered = true;
+      }
+      this._update();
+    }
 
-    this._attachListeners();
-  }
+    _build() {
+      const shadow = this.shadowRoot;
+      shadow.innerHTML = "";
 
-  _template() {
-    return `
-    <ha-card class="backplate">
+      const style = document.createElement("style");
+      style.textContent = STYLES;
+      shadow.appendChild(style);
 
-      <!-- Header -->
-      <div class="bp-header">
-        <div class="bp-header-left">
-          <span class="bp-brand">ADAM Audio</span>
-          <span class="bp-name" id="bp-name">${this._config.title || "A-Series"}</span>
-        </div>
-        <div class="bp-header-right">
-          <span class="bp-status-label">Status</span>
-          <span class="bp-status-led" id="status-led"></span>
+      const tpl = document.createElement("div");
+      tpl.innerHTML = this._template();
+      shadow.appendChild(tpl.firstElementChild);
+
+      this._attachListeners();
+    }
+
+    _template() {
+      return `
+    <ha-card class="card">
+      <div class="header">
+        <div class="title" id="device-name">${this._config.title || "Monitor"}</div>
+        <div class="power-row">
+          <button class="power-toggle" id="btn-mute">Mute</button>
+          <button class="power-toggle" id="btn-sleep">Sleep</button>
         </div>
       </div>
 
-      <!-- Panel -->
-      <div class="bp-panel">
+      <div class="body">
 
         <!-- Room Adaptation -->
-        <div class="bp-room-adaptation" id="room-adaptation">
-          <div class="bp-section-title">Room Adaptation</div>
-          <div class="bp-curves-container">
-            ${this._curveSvg()}
+        <div class="room-adaptation">
+          <div class="section-title">Room Adaptation</div>
+
+          <div class="eq-graphic">
+            <svg viewBox="0 0 315 120" style="overflow: visible;">
+               <!-- Central reference line -->
+               <line x1="20" y1="60" x2="295" y2="60" stroke="rgba(255, 255, 255, 1)" stroke-width="1.5"/>
+
+               <g fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5">
+                 <!-- Bass paths (horizontal start → peak → center line) -->
+                 <path d="M 20 43 H 45 C 62 43, 62 60, 82 60"/>
+                 <path d="M 20 77 H 45 C 62 77, 62 60, 82 60"/>
+                 <path d="M 20 94 H 45 C 62 94, 62 60, 82 60"/>
+
+                 <!-- Desk paths -->
+                 <path d="M 82 60 C 101 60, 101 77, 120 77 C 139 77, 139 60, 158 60"/>
+                 <path d="M 82 60 C 101 60, 101 94, 120 94 C 139 94, 139 60, 158 60"/>
+
+                 <!-- Presence paths -->
+                 <path d="M 158 60 C 176 60, 176 43, 195 43 C 214 43, 214 60, 232 60"/>
+                 <path d="M 158 60 C 176 60, 176 77, 195 77 C 214 77, 214 60, 232 60"/>
+
+                 <!-- Treble paths (center line → peak → horizontal end) -->
+                 <path d="M 232 60 C 251 60, 251 43, 270 43 H 295"/>
+                 <path d="M 232 60 C 251 60, 251 77, 270 77 H 295"/>
+               </g>
+            </svg>
+
+            <!-- Bass LEDs -->
+            <div class="led eq-led" id="led-bass-1" style="left:45px; top:43px;"></div>
+            <div class="led eq-led" id="led-bass-0" style="left:45px; top:60px;"></div>
+            <div class="led eq-led" id="led-bass--1" style="left:45px; top:77px;"></div>
+            <div class="led eq-led" id="led-bass--2" style="left:45px; top:94px;"></div>
+
+            <!-- Desk LEDs -->
+            <div class="led eq-led" id="led-desk-0" style="left:120px; top:60px;"></div>
+            <div class="led eq-led" id="led-desk--1" style="left:120px; top:77px;"></div>
+            <div class="led eq-led" id="led-desk--2" style="left:120px; top:94px;"></div>
+
+            <!-- Presence LEDs -->
+            <div class="led eq-led" id="led-presence-1" style="left:195px; top:43px;"></div>
+            <div class="led eq-led" id="led-presence-0" style="left:195px; top:60px;"></div>
+            <div class="led eq-led" id="led-presence--1" style="left:195px; top:77px;"></div>
+
+            <!-- Treble LEDs -->
+            <div class="led eq-led" id="led-treble-1" style="left:270px; top:43px;"></div>
+            <div class="led eq-led" id="led-treble-0" style="left:270px; top:60px;"></div>
+            <div class="led eq-led" id="led-treble--1" style="left:270px; top:77px;"></div>
           </div>
-          <div class="bp-toggle-area" id="room-toggle">
-            <span class="bp-toggle-indicator" id="toggle-ind"></span>
-            <span class="bp-toggle-label">Toggle</span>
-          </div>
-          <div class="bp-eq-labels">
-            <span class="bp-eq-label">Bass</span>
-            <span class="bp-eq-label">Desk</span>
-            <span class="bp-eq-label">Presence</span>
-            <span class="bp-eq-label">Treble</span>
+
+          <div class="eq-labels">
+             <div class="eq-col-label" style="left: 45px;"><button class="hardware-btn" id="btn-bass"></button><span class="eq-label-text">Bass</span></div>
+             <div class="eq-col-label" style="left: 120px;"><button class="hardware-btn" id="btn-desk"></button><span class="eq-label-text">Desk</span></div>
+             <div class="eq-col-label" style="left: 195px;"><button class="hardware-btn" id="btn-presence"></button><span class="eq-label-text">Presence</span></div>
+             <div class="eq-col-label" style="left: 270px;"><button class="hardware-btn" id="btn-treble"></button><span class="eq-label-text">Treble</span></div>
           </div>
         </div>
 
-        <div class="bp-divider"></div>
+        <div class="section-divider"></div>
 
-        <!-- Audio IN -->
-        <div class="bp-audio-in">
-          <div class="bp-section-title">Audio IN</div>
-          <div class="bp-connectors">
-            <div class="bp-connector">
-              ${SVG_XLR}
-              <div class="bp-connector-info">
-                <span class="bp-led off" id="led-xlr"></span>
-                <span class="bp-connector-label">XLR bal.</span>
+        <div class="bottom-row">
+
+          <div style="flex:3;">
+              <div class="section-title">Audio IN</div>
+              <!-- Audio IN -->
+              <div class="audio-in">
+                 <div class="audio-in-content">
+                     <div class="input-jacks">
+                         <div class="jack-row" style="margin-left: 12px;">
+                             <div class="rca-port"><div class="rca-inner"><div class="rca-hole"></div></div></div>
+                             <div class="jack-label">
+                                <div class="led" id="led-input-rca"></div>
+                                <span>RCA unbal.</span>
+                             </div>
+                         </div>
+                         <div class="jack-row">
+                             <div class="xlr-port">
+                                <div class="xlr-pins xlr-pin-1"></div>
+                                <div class="xlr-pins xlr-pin-2"></div>
+                                <div class="xlr-pins xlr-pin-3"></div>
+                             </div>
+                             <div class="jack-label">
+                                <div class="led" id="led-input-xlr"></div>
+                                <span>XLR bal.</span>
+                             </div>
+                         </div>
+                     </div>
+
+                     <div class="input-select-btn">
+                        <button class="hardware-btn" id="btn-input"></button>
+                        <span class="eq-label-text">Input Select</span>
+                     </div>
+                 </div>
               </div>
-            </div>
-            <div class="bp-connector">
-              ${SVG_RCA}
-              <div class="bp-connector-info">
-                <span class="bp-led off" id="led-rca"></span>
-                <span class="bp-connector-label">RCA unbal.</span>
+          </div>
+
+          <div class="vertical-divider"></div>
+
+          <div style="flex:2;">
+              <div class="section-title">Voicing</div>
+              <!-- Voicing -->
+              <div class="voicing">
+                 <div class="voicing-leds">
+                     <div class="v-item"><div class="led" id="led-voicing-pure"></div><span>Pure</span></div>
+                     <div class="v-item"><div class="led" id="led-voicing-unr"></div><span>UNR</span></div>
+                     <div class="v-item"><div class="led" id="led-voicing-ext"></div><span>Ext</span></div>
+                 </div>
+                 <button class="hardware-btn" id="btn-voicing"></button>
               </div>
-            </div>
           </div>
-          <div class="bp-input-btn-area">
-            <button class="bp-input-btn" id="btn-input">
-              <span class="bp-input-btn-circle"></span>
-              <span class="bp-input-btn-label">Input Select</span>
-            </button>
-          </div>
+
         </div>
-
-        <div class="bp-divider"></div>
-
-        <!-- Voicing -->
-        <div class="bp-voicing">
-          <div class="bp-section-title">Voicing</div>
-          <div class="bp-voicing-options" id="voicing-options">
-            <div class="bp-voicing-opt" data-value="Pure">
-              <span class="bp-led off" id="led-pure"></span>
-              <span class="bp-voicing-label">Pure</span>
-            </div>
-            <div class="bp-voicing-opt" data-value="UNR">
-              <span class="bp-led off" id="led-unr"></span>
-              <span class="bp-voicing-label">UNR</span>
-            </div>
-            <div class="bp-voicing-opt" data-value="Ext">
-              <span class="bp-led off" id="led-ext"></span>
-              <span class="bp-voicing-label">Ext</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="bp-divider"></div>
-
-        <!-- Utility strip: Mute + Power -->
-        <div class="bp-utility-strip">
-          <div class="bp-switch-group" id="sw-mute">
-            <span class="bp-led off" id="led-mute"></span>
-            <div class="bp-toggle-sw off" id="toggle-mute">
-              <div class="toggle-handle"></div>
-            </div>
-            <span class="bp-switch-label">Mute</span>
-          </div>
-          <div class="bp-switch-group" id="sw-power">
-            <span class="bp-led off" id="led-power"></span>
-            <div class="bp-rocker-sw on" id="rocker-power">
-              <div class="bp-rocker-body">
-                <span class="rocker-half on-label">On</span>
-                <span class="rocker-divider"></span>
-                <span class="rocker-half off-label">Off</span>
-              </div>
-            </div>
-            <span class="bp-switch-label">Power</span>
-          </div>
-        </div>
-
       </div>
     </ha-card>`;
-  }
-
-  /* ── EQ curves SVG ──────────────────────────────────────────────────── */
-
-  _curveSvg() {
-    const paths = curvePaths();
-    let svg = `<svg class="bp-curves-svg" viewBox="0 0 320 80" preserveAspectRatio="xMidYMid meet">`;
-
-    // Draw curve paths
-    for (const d of paths) {
-      svg += `<path d="${d}" class="curve-line"/>`;
     }
 
-    // Draw LED dots for each band
-    for (const key of ["bass", "desk", "presence", "treble"]) {
-      const leds = bandLeds(key);
-      for (const led of leds) {
-        svg += `<circle cx="${led.x}" cy="${led.y}" r="4.5"
-          class="led-dot off"
-          data-key="${key}" data-db="${led.db}"
-          id="led-${key}-${led.db < 0 ? 'n' + Math.abs(led.db) : led.db}" />`;
-      }
-    }
+    _attachListeners() {
+      const root = this.shadowRoot;
 
-    svg += `</svg>`;
-    return svg;
-  }
-
-  /* ── Bind listeners ─────────────────────────────────────────────────── */
-
-  _attachListeners() {
-    const root = this.shadowRoot;
-
-    // EQ LED dots — click to set value
-    root.querySelectorAll(".led-dot").forEach((dot) => {
-      dot.addEventListener("click", () => {
-        const key = dot.dataset.key;
-        const db = parseInt(dot.dataset.db, 10);
-        const entityId = this._entities[key];
-        if (entityId) {
-          this._callNumber(entityId, db);
-        }
+      // Power
+      root.getElementById("btn-mute").addEventListener("click", () => {
+        const isMuted = this._stateIs(this._entities.mute, "on");
+        this._callSwitch(this._entities.mute, !isMuted);
       });
-    });
 
-    // Room adaptation toggle — toggles voicing to/from Ext
-    root.getElementById("room-toggle").addEventListener("click", () => {
-      const voicing = this._stateValue(this._entities.voicing);
-      if (voicing === "Ext") {
-        this._callSelect(this._entities.voicing, "Pure");
+      root.getElementById("btn-sleep").addEventListener("click", () => {
+        const isSleeping = this._stateIs(this._entities.sleep, "on");
+        this._callSwitch(this._entities.sleep, !isSleeping);
+      });
+
+      // Room Adaptation EQ Buttons
+      root.getElementById("btn-bass").addEventListener("click", () => {
+        this._cycleNumber(this._entities.bass, [1, 0, -1, -2]);
+      });
+      root.getElementById("btn-desk").addEventListener("click", () => {
+        this._cycleNumber(this._entities.desk, [0, -1, -2]);
+      });
+      root.getElementById("btn-presence").addEventListener("click", () => {
+        this._cycleNumber(this._entities.presence, [1, 0, -1]);
+      });
+      root.getElementById("btn-treble").addEventListener("click", () => {
+        this._cycleNumber(this._entities.treble, [1, 0, -1]);
+      });
+
+      // Input Select
+      root.getElementById("btn-input").addEventListener("click", () => {
+        this._cycleSelect(this._entities.input, ["RCA", "XLR"]);
+      });
+
+      // Voicing
+      root.getElementById("btn-voicing").addEventListener("click", () => {
+        this._cycleSelect(this._entities.voicing, ["Pure", "UNR", "Ext"]);
+      });
+    }
+
+    _update() {
+      if (!this._hass) return;
+      const root = this.shadowRoot;
+      const e = this._entities;
+
+      const available = this._isAvailable(e.mute);
+      root.querySelector(".card").classList.toggle("unavailable", !available);
+
+      const isSleeping = this._stateIs(e.sleep, "on");
+      const isMuted = this._stateIs(e.mute, "on");
+
+      const btnMute = root.getElementById("btn-mute");
+      btnMute.classList.toggle("active-mute", isMuted);
+
+      const btnSleep = root.getElementById("btn-sleep");
+      btnSleep.classList.toggle("active-sleep", isSleeping);
+
+      // Update Room Adaptation LEDs
+      [1, 0, -1, -2].forEach(v => this._setLed(`led-bass-${v}`, false));
+      const bassVal = parseInt(this._stateValue(e.bass), 10);
+      if (!isNaN(bassVal)) this._setLed(`led-bass-${bassVal}`, true);
+
+      [0, -1, -2].forEach(v => this._setLed(`led-desk-${v}`, false));
+      const deskVal = parseInt(this._stateValue(e.desk), 10);
+      if (!isNaN(deskVal)) this._setLed(`led-desk-${deskVal}`, true);
+
+      [1, 0, -1].forEach(v => this._setLed(`led-presence-${v}`, false));
+      const presVal = parseInt(this._stateValue(e.presence), 10);
+      if (!isNaN(presVal)) this._setLed(`led-presence-${presVal}`, true);
+
+      [1, 0, -1].forEach(v => this._setLed(`led-treble-${v}`, false));
+      const trebVal = parseInt(this._stateValue(e.treble), 10);
+      if (!isNaN(trebVal)) this._setLed(`led-treble-${trebVal}`, true);
+
+      // Audio IN LEDs
+      const inputVal = this._stateValue(e.input);
+      this._setLed("led-input-rca", inputVal === "RCA");
+      this._setLed("led-input-xlr", inputVal === "XLR");
+
+      // Voicing LEDs
+      const voicingVal = this._stateValue(e.voicing);
+      this._setLed("led-voicing-pure", voicingVal === "Pure");
+      this._setLed("led-voicing-unr", voicingVal === "UNR");
+      this._setLed("led-voicing-ext", voicingVal === "Ext");
+    }
+
+    _setLed(id, isOn) {
+      const el = this.shadowRoot.getElementById(id);
+      if (!el) return;
+      if (isOn) {
+        el.classList.add("on");
       } else {
-        this._callSelect(this._entities.voicing, "Ext");
-      }
-    });
-
-    // Input select button — toggle between RCA and XLR
-    root.getElementById("btn-input").addEventListener("click", () => {
-      const current = this._stateValue(this._entities.input);
-      const next = current === "XLR" ? "RCA" : "XLR";
-      this._callSelect(this._entities.input, next);
-    });
-
-    // Voicing options — click to select
-    root.getElementById("voicing-options").addEventListener("click", (e) => {
-      const opt = e.target.closest(".bp-voicing-opt");
-      if (!opt) return;
-      this._callSelect(this._entities.voicing, opt.dataset.value);
-    });
-
-    // Mute toggle switch
-    root.getElementById("sw-mute").addEventListener("click", () => {
-      const isMuted = this._stateIs(this._entities.mute, "on");
-      this._callSwitch(this._entities.mute, !isMuted);
-    });
-
-    // Power/sleep rocker switch
-    root.getElementById("sw-power").addEventListener("click", () => {
-      const isSleeping = this._stateIs(this._entities.sleep, "on");
-      this._callSwitch(this._entities.sleep, !isSleeping);
-    });
-  }
-
-  /* ── Update DOM from HA state ───────────────────────────────────────── */
-
-  _update() {
-    if (!this._hass) return;
-    const root = this.shadowRoot;
-    const e = this._entities;
-
-    // Availability
-    const available = this._isAvailable(e.mute);
-    root.querySelector(".backplate").classList.toggle("unavailable", !available);
-
-    const isMuted = this._stateIs(e.mute, "on");
-    const isSleeping = this._stateIs(e.sleep, "on");
-
-    // Status LED — sleep takes priority
-    const statusLed = root.getElementById("status-led");
-    statusLed.className = "bp-status-led";
-    if (!available) {
-      statusLed.classList.add("offline");
-    } else if (isSleeping) {
-      statusLed.classList.add("sleeping");
-    } else if (isMuted) {
-      statusLed.classList.add("muted");
-    } else {
-      statusLed.classList.add("online");
-    }
-
-    // Voicing
-    const voicingVal = this._stateValue(e.voicing);
-    const voicingMap = { Pure: "led-pure", UNR: "led-unr", Ext: "led-ext" };
-    for (const [key, id] of Object.entries(voicingMap)) {
-      const el = root.getElementById(id);
-      el.className = "bp-led " + (voicingVal === key ? "on" : "off");
-    }
-    root.querySelectorAll(".bp-voicing-opt").forEach((opt) => {
-      opt.classList.toggle("active", opt.dataset.value === voicingVal);
-    });
-
-    // Room adaptation toggle indicator + disabled state
-    const roomActive = voicingVal !== "Ext";
-    root.getElementById("toggle-ind").className =
-      "bp-toggle-indicator" + (roomActive ? " on" : "");
-    root.getElementById("room-adaptation").classList.toggle("disabled",
-      !roomActive && available);
-
-    // But keep the toggle area itself clickable even when disabled
-    if (!roomActive && available) {
-      const toggleArea = root.getElementById("room-toggle");
-      toggleArea.style.pointerEvents = "auto";
-      toggleArea.style.opacity = "1";
-    }
-
-    // EQ LED dots
-    for (const key of ["bass", "desk", "presence", "treble"]) {
-      const val = parseInt(this._stateValue(e[key]) ?? "0", 10);
-      const band = EQ_BANDS[key];
-      for (let db = band.min; db <= band.max; db++) {
-        const id = `led-${key}-${db < 0 ? 'n' + Math.abs(db) : db}`;
-        const dot = root.getElementById(id);
-        if (dot) {
-          dot.classList.remove("on", "off");
-          dot.classList.add(db === val ? "on" : "off");
-        }
+        el.classList.remove("on");
       }
     }
 
-    // Input source LEDs
-    const inputVal = this._stateValue(e.input);
-    root.getElementById("led-xlr").className =
-      "bp-led " + (inputVal === "XLR" ? "on" : "off");
-    root.getElementById("led-rca").className =
-      "bp-led " + (inputVal === "RCA" ? "on" : "off");
+    /* HA State helpers */
 
-    // Mute toggle switch + LED
-    const toggleMute = root.getElementById("toggle-mute");
-    toggleMute.className = "bp-toggle-sw " + (isMuted ? "on" : "off");
-    root.getElementById("led-mute").className =
-      "bp-led " + (isMuted ? "red-on" : "off");
+    _stateObj(entityId) {
+      return entityId && this._hass ? this._hass.states[entityId] : undefined;
+    }
 
-    // Power rocker switch + LED
-    const rockerPower = root.getElementById("rocker-power");
-    rockerPower.className = "bp-rocker-sw " + (isSleeping ? "off" : "on");
-    root.getElementById("led-power").className =
-      "bp-led " + (isSleeping ? "amber-on" : "on");
+    _stateIs(entityId, value) {
+      const s = this._stateObj(entityId);
+      return s ? s.state === value : false;
+    }
+
+    _stateValue(entityId) {
+      const s = this._stateObj(entityId);
+      return s ? s.state : null;
+    }
+
+    _isAvailable(entityId) {
+      const s = this._stateObj(entityId);
+      return !!s && s.state !== "unavailable" && s.state !== "unknown";
+    }
+
+    _callSwitch(entityId, turnOn) {
+      if (!entityId || !this._hass) return;
+      this._hass.callService("switch", turnOn ? "turn_on" : "turn_off", {
+        entity_id: entityId,
+      });
+    }
+
+    _cycleNumber(entityId, valuesArray) {
+      if (!entityId || !this._hass) return;
+      let current = parseInt(this._stateValue(entityId), 10);
+      if (isNaN(current)) current = valuesArray[0];
+
+      const idx = valuesArray.indexOf(current);
+      const nextVal = (idx === -1 || idx === valuesArray.length - 1) ? valuesArray[0] : valuesArray[idx + 1];
+
+      this._hass.callService("number", "set_value", {
+        entity_id: entityId,
+        value: String(nextVal),
+      });
+    }
+
+    _cycleSelect(entityId, valuesArray) {
+      if (!entityId || !this._hass) return;
+      const current = this._stateValue(entityId);
+
+      let idx = valuesArray.findIndex(v => v.toLowerCase() === (current || "").toLowerCase());
+      const nextVal = (idx === -1 || idx === valuesArray.length - 1) ? valuesArray[0] : valuesArray[idx + 1];
+
+      this._hass.callService("select", "select_option", {
+        entity_id: entityId,
+        option: nextVal,
+      });
+    }
+
+    getCardSize() { return 6; }
   }
 
-  /* ── HA helpers ─────────────────────────────────────────────────────── */
-
-  _stateObj(entityId) {
-    return entityId && this._hass ? this._hass.states[entityId] : undefined;
+  try {
+    customElements.define("adam-audio-backplate-card", BackplateCard);
+  } catch (e) {
+    if (!e.message.includes("already been used")) {
+      console.error("Failed to register adam-audio-backplate-card:", e);
+    }
   }
 
-  _stateIs(entityId, value) {
-    const s = this._stateObj(entityId);
-    return s ? s.state === value : false;
-  }
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "adam-audio-backplate-card",
+    name: "ADAM Audio Backplate Card",
+    description: "Mimics the physical backplate of the ADAM Audio A-Series monitor.",
+    preview: false,
+    documentationURL: "https://github.com/Perhan35/hass-adam-audio-control",
+  });
 
-  _stateValue(entityId) {
-    const s = this._stateObj(entityId);
-    return s ? s.state : null;
-  }
-
-  _isAvailable(entityId) {
-    const s = this._stateObj(entityId);
-    return !!s && s.state !== "unavailable" && s.state !== "unknown";
-  }
-
-  _callSwitch(entityId, turnOn) {
-    if (!entityId || !this._hass) return;
-    this._hass.callService("switch", turnOn ? "turn_on" : "turn_off", {
-      entity_id: entityId,
-    });
-  }
-
-  _callSelect(entityId, option) {
-    if (!entityId || !this._hass) return;
-    this._hass.callService("select", "select_option", {
-      entity_id: entityId,
-      option,
-    });
-  }
-
-  _callNumber(entityId, value) {
-    if (!entityId || !this._hass) return;
-    this._hass.callService("number", "set_value", {
-      entity_id: entityId,
-      value: String(value),
-    });
-  }
-
-  /* ── Card size hint ─────────────────────────────────────────────────── */
-
-  getCardSize() { return 7; }
-}
-
-try {
-  customElements.define("adam-audio-backplate-card", AdamAudioBackplateCard);
-} catch (e) {
-  if (!e.message.includes("already been used")) {
-    console.error("Failed to register adam-audio-backplate-card:", e);
-  }
-}
-
-// Register with HACS / custom card picker
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "adam-audio-backplate-card",
-  name: "ADAM Audio Backplate Card",
-  description: "Backplate-style control card replicating the physical panel of ADAM Audio A-Series monitors.",
-  preview: false,
-  documentationURL: "https://github.com/Perhan35/hass-adam-audio-control",
-});
-
-console.info(
-  `%c ADAM AUDIO BACKPLATE %c v${BP_VERSION} `,
-  "background:#22ff22;color:#111;padding:2px 6px;border-radius:3px 0 0 3px;font-weight:bold",
-  "background:#1a1a1e;color:#22ff22;padding:2px 6px;border-radius:0 3px 3px 0"
-);
+  console.info(
+    `%c ADAM AUDIO BACKPLATE %c v${CARD_VERSION} `,
+    "background:#22c55e;color:#111;padding:2px 6px;border-radius:3px 0 0 3px;font-weight:bold",
+    "background:#1c1e21;color:#22c55e;padding:2px 6px;border-radius:0 3px 3px 0"
+  );
 })();

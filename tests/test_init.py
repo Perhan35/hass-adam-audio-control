@@ -83,8 +83,8 @@ async def test_async_setup_registers_cards(hass: HomeAssistant) -> None:
     assert "frontend_extra_module_url" in hass.data
     urls = hass.data["frontend_extra_module_url"]
     assert any("adam-audio-card.js" in url for url in urls)
-    assert any("backplate-card.js" in url for url in urls)
     assert any("adam-audio-backplate-card.js" in url for url in urls)
+    assert any("adam-audio-backplate-card-alt.js" in url for url in urls)
 
 
 async def test_async_reload_entry(hass: HomeAssistant, mock_config_entry) -> None:

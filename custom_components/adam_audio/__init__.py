@@ -34,11 +34,11 @@ if TYPE_CHECKING:
 _CARD_URL = "/adam_audio/adam-audio-card.js"
 _CARD_JS = Path(__file__).parent / "www" / "adam-audio-card.js"
 
-_BACKPLATE_URL = "/adam_audio/backplate-card.js"
-_BACKPLATE_JS = Path(__file__).parent / "www" / "backplate-card.js"
+_BACKPLATE_URL = "/adam_audio/adam-audio-backplate-card.js"
+_BACKPLATE_JS = Path(__file__).parent / "www" / "adam-audio-backplate-card.js"
 
-_BACKPLATE_2_URL = "/adam_audio/adam-audio-backplate-card.js"
-_BACKPLATE_2_JS = Path(__file__).parent / "www" / "adam-audio-backplate-card.js"
+_BACKPLATE_ALT_URL = "/adam_audio/adam-audio-backplate-card-alt.js"
+_BACKPLATE_ALT_JS = Path(__file__).parent / "www" / "adam-audio-backplate-card-alt.js"
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -62,7 +62,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
                 _BACKPLATE_URL, str(_BACKPLATE_JS), cache_headers=False
             )
             hass.http.register_static_path(
-                _BACKPLATE_2_URL, str(_BACKPLATE_2_JS), cache_headers=False
+                _BACKPLATE_ALT_URL, str(_BACKPLATE_ALT_JS), cache_headers=False
             )
         except AttributeError:
             # Fallback for newer Home Assistant versions
@@ -75,7 +75,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
                         _BACKPLATE_URL, str(_BACKPLATE_JS), cache_headers=False
                     ),
                     StaticPathConfig(
-                        _BACKPLATE_2_URL, str(_BACKPLATE_2_JS), cache_headers=False
+                        _BACKPLATE_ALT_URL, str(_BACKPLATE_ALT_JS), cache_headers=False
                     ),
                 ]
             )
@@ -85,7 +85,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
 
     add_extra_js_url(hass, _CARD_URL)
     add_extra_js_url(hass, _BACKPLATE_URL)
-    add_extra_js_url(hass, _BACKPLATE_2_URL)
+    add_extra_js_url(hass, _BACKPLATE_ALT_URL)
 
     return True
 
