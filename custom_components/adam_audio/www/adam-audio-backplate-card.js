@@ -17,6 +17,7 @@
  *     treble:   number.left_treble
  */
 
+(function () {
 const BP_VERSION = "1.0.0";
 
 /* ── EQ band definitions ─────────────────────────────────────────────────── */
@@ -1037,3 +1038,4 @@ console.info(
   "background:#22ff22;color:#111;padding:2px 6px;border-radius:3px 0 0 3px;font-weight:bold",
   "background:#1a1a1e;color:#22ff22;padding:2px 6px;border-radius:0 3px 3px 0"
 );
+})();

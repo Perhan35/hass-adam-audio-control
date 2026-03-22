@@ -17,6 +17,7 @@
  *     treble:   number.left_treble
  */
 
+(function () {
 const CARD_VERSION = "1.0.0";
 
 /* ── CSS ─────────────────────────────────────────────────────────────────── */
@@ -718,3 +719,4 @@ console.info(
   "background:#ff6a00;color:#fff;padding:2px 6px;border-radius:3px 0 0 3px;font-weight:bold",
   "background:#1c1e21;color:#ff6a00;padding:2px 6px;border-radius:0 3px 3px 0"
 );
+})();

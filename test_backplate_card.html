@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { background: #0a0a0a; padding: 40px; margin: 0; display: flex; justify-content: center; }
+  .demo { width: 100%; max-width: 600px; }
+  /* Stub out ha-card since we don't have HA styling library */
+  ha-card { display: block; background: transparent; }
+</style>
+<script type="module">
+  import "./custom_components/adam_audio/www/backplate-card.js";
+
+  // Create a mock hass object to prevent errors when elements connect
+  const mockHass = {
+    states: {
+      "select.left_input_source": { state: "RCA" },
+      "select.left_voicing": { state: "UNR" },
+      "number.left_bass": { state: "1" },
+      "number.left_desk": { state: "-1" },
+      "number.left_presence": { state: "0" },
+      "number.left_treble": { state: "-1" },
+      "switch.left_mute": { state: "off" },
+      "switch.left_sleep": { state: "on" }
+    },
+    callService: (domain, service, data) => {
+      console.log("HA callService:", domain, service, data);
+
+      // Basic mock state updates to test UI interactivity
+      if (domain === "select" && service === "select_option") {
+        mockHass.states[data.entity_id].state = data.option;
+        updateCard();
+      } else if (domain === "number" && service === "set_value") {
+        mockHass.states[data.entity_id].state = data.value;
+        updateCard();
+      } else if (domain === "switch") {
+        mockHass.states[data.entity_id].state = service === "turn_on" ? "on" : "off";
+        updateCard();
+      }
+    }
+  };
+
+  let el;
+  window.onload = () => {
+    el = document.createElement("backplate-card");
+    el.setConfig(customElements.get("backplate-card").getStubConfig());
+    const demo = document.querySelector(".demo");
+    demo.appendChild(el);
+    updateCard();
+  };
+
+  function updateCard() {
+    if (el) el.hass = mockHass;
+  }
+</script>
+</head>
+<body>
+  <div class="demo"></div>
+</body>
+</html>
