@@ -1,10 +1,12 @@
 # Contributing to ADAM Audio Control
 
-Everyone is invited to contribute to this project. Here's how to get started.
+This project uses `pytest` for unit testing and `pre-commit` hooks for code formatting and linting (`ruff`).
 
 ---
 
 ## Getting Started
+
+To set up a local development environment:
 
 1. Clone the repository
 2. Create a virtual environment and install dependencies:
@@ -33,7 +35,11 @@ Everyone is invited to contribute to this project. Here's how to get started.
    ./scripts/checks        # runs lint + tests + coverage in one go
    ```
 4. Test the UI by running `scripts/develop`
-5. Open a Pull Request
+5. Run pre-commit hooks:
+   ```bash
+   pre-commit run --all-files
+   ```
+6. Open a Pull Request
 
 ---
 

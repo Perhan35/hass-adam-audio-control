@@ -146,15 +146,14 @@ entities:
   treble:   number.{entity_name}_treble
 ```
 
-### Backplate Card (`custom:adam-audio-backplate-card`)
+### ADAM Audio Backplate Card (`custom:adam-audio-backplate-card`)
 
-A card that visually replicates the physical backplate of an ADAM Audio A-Series monitor — dark metallic panel, green LED indicators, frequency response curves, XLR/RCA connector graphics, toggle and rocker switches.
+A card that visually replicates the physical backplate of an ADAM Audio A-Series monitor — dark metallic panel, green LED indicators, frequency response curves, XLR/RCA connector graphics, and round hardware-style buttons.
 
-- **Room Adaptation**: Click green LED dots to set Bass, Desk, Presence, and Treble dB values. Curves between LEDs mimic the frequency response aesthetic of the real backplate.
-- **Audio IN**: XLR and RCA connector visuals with LED indicators. Click "Input Select" to toggle.
-- **Voicing**: Click Pure, UNR, or Ext to select. Selecting Ext disables Room Adaptation controls.
-- **Mute / Power**: DIP toggle switch (mute, red LED) and rocker switch (power/sleep, amber LED).
-- **Status LED**: Green = online, red = muted, green blinking = sleeping.
+- **Room Adaptation**: SVG EQ curves visualize the frequency bands. Green LEDs indicate the current dB value for each band. Click the round hardware buttons below each band (Bass, Desk, Presence, Treble) to cycle through values.
+- **Audio IN**: XLR and RCA connector graphics with green LED indicators showing the active input. Click the "Input Select" hardware button to toggle between RCA and XLR.
+- **Voicing**: Green LEDs for Pure, UNR, and Ext. Click the "Voicing" button to cycle through voicing modes.
+- **Mute / Sleep**: Header buttons that highlight red (mute) or amber (sleep) when active.
 
 ```yaml
 type: custom:adam-audio-backplate-card
@@ -170,7 +169,7 @@ entities:
   treble:   number.left_treble
 ```
 
-### All Speakers Group (with Backplate Card Alternative)
+### All Speakers Group (exemple with Backplate Card Alternative)
 
 All cards work with the **All Speakers** group entities (prefixed `all_speakers_`):
 
@@ -192,7 +191,7 @@ entities:
 
 ---
 
-## Automations
+## Automations examples
 
 ```yaml
 # Mute both speakers when Sonos starts playing
@@ -246,51 +245,24 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 
 ---
 
+## Development & Testing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
+
+---
+
 ## TODO
 
 - [x] **Add translation support**
 - [x] **Full test suite**: Add tests for all entity platforms, group entity logic, and coordinator update cycle.
 - [x] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
 - [x] **Add support for more ADAM Audio speaker models**: tested with A4V only
+- [x] **Propose this integration to HACS**
+- [ ] **Propose this integration to Home Assistant Core**
 - [x] **Enhance connectivity and error handling**:
   - [x] add retry logic,
   - [x] implement a proper keepalive mechanism,
   - [ ] better error messages
-
----
-
-## Development & Testing
-
-This project uses `pytest` for unit testing and `pre-commit` hooks for code formatting and linting (`ruff`).
-
-To set up a local development environment:
-
-1. Create a virtual environment and install dependencies:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-2. Run the test suite:
-   ```bash
-   pytest tests/ -v --cov=custom_components.adam_audio
-   ```
-3. Install and run pre-commit hooks to automate formatting:
-   ```bash
-   pre-commit install
-   pre-commit run --all-files
-   ```
-
-You can also run the test suite for all checks at once:
-   ```bash
-  ./scripts/checks
-   ```
-
-
-For debug, you can run the zeroconf discovery test:
-   ```bash
-   python scripts/browse_mdns
-   ```
 
 ---
 
