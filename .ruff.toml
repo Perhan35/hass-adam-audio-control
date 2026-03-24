@@ -51,12 +51,25 @@ ignore = [
     "D",       # docstring rules relaxed in tests
     "ARG001",  # unused function argument (pytest fixtures)
 ]
-"custom_components/**/oca_*.py" = [
+"lib/tests/**/*.py" = [
+    "S101",    # assert is fine in tests
+    "ANN",     # type annotations optional in tests
+    "D",       # docstring rules relaxed in tests
+    "ARG001",  # unused function argument (pytest fixtures)
+    "INP001",  # implicit namespace package (no __init__.py by design)
+]
+"lib/pyadamaudiocontroller/**/*.py" = [
     "D",       # protocol implementation files
     "ANN",     # type annotations
     "N",       # naming conventions
     "S101",    # assert used for protocol validation
     "ARG",     # unused arguments in protocol callbacks
+]
+"scripts/**/*.py" = [
+    "T201",    # print is expected in CLI scripts
+    "ANN",     # type annotations optional in scripts
+    "D103",    # missing docstring in public function (main)
+    "PTH123",  # open() vs Path.open()
 ]
 
 [lint.flake8-pytest-style]

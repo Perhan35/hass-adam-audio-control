@@ -7,8 +7,8 @@ import io
 import struct
 from typing import BinaryIO
 
-from .oca_types import PDU, OcaType
-from .oca_util import unpack_from_stream
+from .types import PDU, OcaType
+from .util import unpack_from_stream
 
 
 class Command(PDU):

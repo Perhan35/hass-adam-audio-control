@@ -12,8 +12,8 @@ ruff check --fix .
 echo "=== Ruff format ==="
 ruff format .
 
-echo "=== Tests + coverage ==="
-pytest tests/ -v --cov=custom_components.adam_audio --cov-fail-under=95
+scripts/tests lib
+scripts/tests integration
 
 echo ""
 echo "All checks passed!"

@@ -3,16 +3,15 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from custom_components.adam_audio.oca_command import Command
-from custom_components.adam_audio.oca_device import Device
-from custom_components.adam_audio.oca_keepalive import Keepalive
+from pyadamaudiocontroller.command import Command
+from pyadamaudiocontroller.device import Device
+from pyadamaudiocontroller.keepalive import Keepalive
 
 
 @pytest.fixture
 def mock_socket() -> MagicMock:
     """Fixture for a mock socket."""
-    with patch("custom_components.adam_audio.oca_device.socket.socket") as mock:
+    with patch("pyadamaudiocontroller.device.socket.socket") as mock:
         sock = mock.return_value
         yield sock
 
@@ -109,8 +108,8 @@ def test_device_drain(mock_socket: MagicMock) -> None:
     assert mock_socket.recvfrom.call_count == 3
 
 
-@patch("custom_components.adam_audio.oca_device.Message.decode")
-@patch("custom_components.adam_audio.oca_device.Response.decode")
+@patch("pyadamaudiocontroller.device.Message.decode")
+@patch("pyadamaudiocontroller.device.Response.decode")
 def test_device_receive_response(
     mock_resp_decode, mock_msg_decode, mock_socket: MagicMock
 ) -> None:
@@ -148,7 +147,7 @@ def test_device_get_full_state_pdus(mock_socket: MagicMock) -> None:
         assert mock_send.call_count == 8
 
 
-@patch("custom_components.adam_audio.oca_device.Message.decode")
+@patch("pyadamaudiocontroller.device.Message.decode")
 def test_device_receive_response_errors(
     mock_msg_decode, mock_socket: MagicMock
 ) -> None:

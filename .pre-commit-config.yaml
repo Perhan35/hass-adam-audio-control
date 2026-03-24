@@ -7,6 +7,20 @@ repos:
         language: script
         files: (manifest\.json|README\.md)
 
+      - id: tests-lib
+        name: run library tests
+        entry: scripts/tests lib
+        language: script
+        pass_filenames: false
+        always_run: true
+
+      - id: tests-integration
+        name: run integration tests
+        entry: scripts/tests integration
+        language: script
+        pass_filenames: false
+        always_run: true
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:

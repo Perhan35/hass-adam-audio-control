@@ -25,9 +25,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.exceptions import HomeAssistantError
+from pyadamaudiocontroller import Device
 
 from .const import LOGGER
-from .oca_device import Device
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant

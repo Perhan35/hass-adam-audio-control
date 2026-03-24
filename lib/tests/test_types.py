@@ -1,12 +1,11 @@
 import io
 
 import pytest
-
-from custom_components.adam_audio.oca_command import Command
-from custom_components.adam_audio.oca_keepalive import Keepalive
-from custom_components.adam_audio.oca_message import Message
-from custom_components.adam_audio.oca_response import Response
-from custom_components.adam_audio.oca_types import OcaInt8, OcaString, OcaUint16
+from pyadamaudiocontroller.command import Command
+from pyadamaudiocontroller.keepalive import Keepalive
+from pyadamaudiocontroller.message import Message
+from pyadamaudiocontroller.response import Response
+from pyadamaudiocontroller.types import OcaInt8, OcaString, OcaUint16
 
 
 def test_oca_types():

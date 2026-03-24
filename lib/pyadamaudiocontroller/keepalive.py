@@ -6,8 +6,8 @@ Originally from the pacontrol library by dmach (https://github.com/dmach/pacontr
 import struct
 from typing import BinaryIO
 
-from .oca_types import PDU
-from .oca_util import unpack_from_stream
+from .types import PDU
+from .util import unpack_from_stream
 
 
 class Keepalive(PDU):

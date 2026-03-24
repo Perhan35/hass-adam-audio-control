@@ -12,11 +12,11 @@ import socket
 import struct
 from types import SimpleNamespace
 
-from .oca_command import Command
-from .oca_keepalive import Keepalive
-from .oca_message import Message
-from .oca_response import Response
-from .oca_types import PDU, OcaInt8, OcaString, OcaUint16
+from .command import Command
+from .keepalive import Keepalive
+from .message import Message
+from .response import Response
+from .types import PDU, OcaInt8, OcaString, OcaUint16
 
 
 class Device:

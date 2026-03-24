@@ -1,3 +1,6 @@
+# ADAM Audio OCA protocol library (editable install from monorepo)
+-e lib/
+
 # Home Assistant core
 homeassistant>=2026.3.0
 

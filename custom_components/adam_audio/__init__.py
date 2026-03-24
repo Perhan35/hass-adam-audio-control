@@ -31,14 +31,7 @@ if TYPE_CHECKING:
 
     from .data import AdamAudioConfigEntry
 
-_CARD_URL = "/adam_audio/adam-audio-card.js"
-_CARD_JS = Path(__file__).parent / "www" / "adam-audio-card.js"
-
-_BACKPLATE_URL = "/adam_audio/adam-audio-backplate-card.js"
-_BACKPLATE_JS = Path(__file__).parent / "www" / "adam-audio-backplate-card.js"
-
-_BACKPLATE_ALT_URL = "/adam_audio/adam-audio-backplate-card-alt.js"
-_BACKPLATE_ALT_JS = Path(__file__).parent / "www" / "adam-audio-backplate-card-alt.js"
+_WWW_DIR = Path(__file__).parent / "www"
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -50,19 +43,29 @@ PLATFORMS: list[Platform] = [
 
 
 async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
-    """Register the Lovelace card as a frontend resource."""
+    """Register Lovelace cards if present (HACS install only)."""
+    if not _WWW_DIR.is_dir():
+        return True
+
     from homeassistant.components.frontend import add_extra_js_url
+
+    card_url = "/adam_audio/adam-audio-card.js"
+    card_js = str(_WWW_DIR / "adam-audio-card.js")
+
+    backplate_url = "/adam_audio/adam-audio-backplate-card.js"
+    backplate_js = str(_WWW_DIR / "adam-audio-backplate-card.js")
+
+    backplate_alt_url = "/adam_audio/adam-audio-backplate-card-alt.js"
+    backplate_alt_js = str(_WWW_DIR / "adam-audio-backplate-card-alt.js")
 
     if hasattr(hass, "http") and hass.http is not None:
         try:
+            hass.http.register_static_path(card_url, card_js, cache_headers=False)
             hass.http.register_static_path(
-                _CARD_URL, str(_CARD_JS), cache_headers=False
+                backplate_url, backplate_js, cache_headers=False
             )
             hass.http.register_static_path(
-                _BACKPLATE_URL, str(_BACKPLATE_JS), cache_headers=False
-            )
-            hass.http.register_static_path(
-                _BACKPLATE_ALT_URL, str(_BACKPLATE_ALT_JS), cache_headers=False
+                backplate_alt_url, backplate_alt_js, cache_headers=False
             )
         except AttributeError:
             # Fallback for newer Home Assistant versions
@@ -70,12 +73,10 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
 
             await hass.http.async_register_static_paths(
                 [
-                    StaticPathConfig(_CARD_URL, str(_CARD_JS), cache_headers=False),
+                    StaticPathConfig(card_url, card_js, cache_headers=False),
+                    StaticPathConfig(backplate_url, backplate_js, cache_headers=False),
                     StaticPathConfig(
-                        _BACKPLATE_URL, str(_BACKPLATE_JS), cache_headers=False
-                    ),
-                    StaticPathConfig(
-                        _BACKPLATE_ALT_URL, str(_BACKPLATE_ALT_JS), cache_headers=False
+                        backplate_alt_url, backplate_alt_js, cache_headers=False
                     ),
                 ]
             )
@@ -83,9 +84,9 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     if "frontend_extra_module_url" not in hass.data:
         hass.data["frontend_extra_module_url"] = set()
 
-    add_extra_js_url(hass, _CARD_URL)
-    add_extra_js_url(hass, _BACKPLATE_URL)
-    add_extra_js_url(hass, _BACKPLATE_ALT_URL)
+    add_extra_js_url(hass, card_url)
+    add_extra_js_url(hass, backplate_url)
+    add_extra_js_url(hass, backplate_alt_url)
 
     return True
 

@@ -3,7 +3,8 @@
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue.svg)](https://www.home-assistant.io)
 [![Test and Lint](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml/badge.svg)](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](custom_components/adam_audio/manifest.json)
+[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](custom_components/adam_audio/manifest.json)
+[![PyPI](https://img.shields.io/pypi/v/pyadamaudiocontroller.svg)](https://pypi.org/project/pyadamaudiocontroller/)
 [![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/)
 
 Home Assistant integration for **ADAM Audio A-Series studio monitors** (A4V, A7V, etc.) via the AES70/OCA protocol over UDP.
@@ -221,6 +222,18 @@ automation:
 
 ---
 
+## Protocol Library
+
+The AES70/OCA protocol layer is published as a standalone Python package:
+
+```
+pip install pyadamaudiocontroller
+```
+
+This library (`lib/pyadamaudiocontroller/`) handles all low-level UDP communication with the speakers and has zero dependencies beyond the Python standard library. It is used by both the HACS custom component and the HA Core integration.
+
+---
+
 ## How it works
 
 Communication uses the **AES70/OCA protocol over UDP** — the same protocol used by ADAM Audio's official *A Control* app. No audio data is sent over the network; this integration is control-only.
@@ -251,6 +264,20 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 
 ---
 
+## Repository Structure
+
+This is a **monorepo** that produces three deliverables:
+
+| Directory | Purpose |
+|-----------|---------|
+| `lib/pyadamaudiocontroller/` | Standalone PyPI protocol library |
+| `custom_components/adam_audio/` | HACS custom integration (includes dashboard cards) |
+| `scripts/gen_core.py` | Generates files for HA Core PR submission |
+
+More info, see [CONTRIBUTING.md#repository-structure](CONTRIBUTING.md#repository-structure).
+
+---
+
 ## TODO
 
 - [x] **Add translation support**
@@ -258,7 +285,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
 - [x] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
 - [x] **Add support for more ADAM Audio speaker models**: tested with A4V only
 - [x] **Propose this integration to HACS**
-- [ ] **Propose this integration to Home Assistant Core**
+- [x] **Extract protocol library to PyPI** (`pyadamaudiocontroller`)
+- [ ] **Propose this integration to Home Assistant Core**: ongoing
 - [x] **Enhance connectivity and error handling**:
   - [x] add retry logic,
   - [x] implement a proper keepalive mechanism,

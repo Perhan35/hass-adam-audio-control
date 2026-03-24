@@ -7,7 +7,7 @@ import abc
 import struct
 from typing import BinaryIO
 
-from .oca_util import unpack_from_stream
+from .util import unpack_from_stream
 
 
 class PDU:

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyadamaudiocontroller"
+version = "1.0.0"
+description = "AES70/OCA protocol library for ADAM Audio A-Series studio monitors"
+readme = "../README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Perhan35" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+[project.urls]
+Homepage = "https://github.com/Perhan35/hass-adam-audio-control"
+Repository = "https://github.com/Perhan35/hass-adam-audio-control"
+Issues = "https://github.com/Perhan35/hass-adam-audio-control/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pyadamaudiocontroller"]

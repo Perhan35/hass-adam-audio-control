@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Script to run tests - used by pre-commit hook and locally.
+
+set -e
+
+# Change to the repository root
+cd "$(dirname "$0")/.."
+
+# Prefer the local .venv if it exists
+if [ -d ".venv" ]; then
+    export PATH="$(pwd)/.venv/bin:$PATH"
+fi
+
+# Run specific tests based on argument
+case "$1" in
+    lib)
+        echo "=== Tests + coverage (library) ==="
+        pytest lib/tests/ -v --cov=lib/pyadamaudiocontroller --cov-fail-under=100
+        ;;
+    integration)
+        echo "=== Tests + coverage (integration) ==="
+        pytest tests/ -v --cov=custom_components.adam_audio --cov-fail-under=95
+        ;;
+    *)
+        echo "=== Tests + coverage (library) ==="
+        pytest lib/tests/ -v --cov=lib/pyadamaudiocontroller --cov-fail-under=100
+        echo "=== Tests + coverage (integration) ==="
+        pytest tests/ -v --cov=custom_components.adam_audio --cov-fail-under=95
+        ;;
+esac

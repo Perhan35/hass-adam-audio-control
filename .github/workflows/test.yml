@@ -23,7 +23,32 @@ jobs:
       with:
         category: integration
 
-  test:
+  test-lib:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.14"
+        cache: 'pip'
+
+    - name: Install library and test dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e lib/
+        pip install pytest pytest-cov
+
+    - name: Test library
+      run: |
+        pytest lib/tests/ -v --cov=pyadamaudiocontroller --cov-report=xml
+
+    - name: Check library coverage threshold
+      run: |
+        pytest lib/tests/ --cov=pyadamaudiocontroller --cov-fail-under=100
+
+  test-integration:
     runs-on: ubuntu-latest
     strategy:
       matrix:
