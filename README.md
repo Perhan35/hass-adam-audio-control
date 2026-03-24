@@ -3,7 +3,7 @@
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue.svg)](https://www.home-assistant.io)
 [![Test and Lint](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml/badge.svg)](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](custom_components/adam_audio/manifest.json)
+[![Version](https://img.shields.io/badge/version-0.3.1-green.svg)](custom_components/adam_audio/manifest.json)
 [![PyPI](https://img.shields.io/pypi/v/pyadamaudiocontroller.svg)](https://pypi.org/project/pyadamaudiocontroller/)
 [![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/)
 
