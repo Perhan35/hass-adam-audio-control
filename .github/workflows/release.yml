@@ -23,31 +23,6 @@ jobs:
           category: integration
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.3.2
         with:
           generate_release_notes: true
-
-  publish-lib:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-
-      - name: Install build tool
-        run: pip install build
-
-      - name: Build library
-        run: python -m build lib/
-
-      - name: Publish to PyPI (skip if version already exists)
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: lib/dist/
-          skip-existing: true
