@@ -2,10 +2,10 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from pyadamaudiocontroller.command import Command
 from pyadamaudiocontroller.device import Device
 from pyadamaudiocontroller.keepalive import Keepalive
+import pytest
 
 
 @pytest.fixture

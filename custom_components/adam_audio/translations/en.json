@@ -5,8 +5,12 @@
         "title": "Add ADAM Audio speaker",
         "description": "Enter the IP address of your ADAM Audio A-Series speaker. If you don't know the port, leave it at the default ({default_port}).",
         "data": {
-          "host": "IP address",
-          "port": "UDP port"
+          "host": "IP address or hostname",
+          "port": "UDP port (default 49494)"
+        },
+        "data_description": {
+          "host": "The IP address or hostname of your ADAM Audio speaker.",
+          "port": "The UDP port of your ADAM Audio speaker."
         }
       },
       "zeroconf_confirm": {

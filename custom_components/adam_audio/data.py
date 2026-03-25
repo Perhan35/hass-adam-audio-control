@@ -21,3 +21,13 @@ class AdamAudioData:
 
     client: AdamAudioClient
     coordinator: AdamAudioCoordinator
+
+
+@dataclass
+class AdamAudioIntegrationData:
+    """Integration-wide data stored in hass.data[DOMAIN]."""
+
+    coordinators: dict[str, AdamAudioCoordinator]
+    group_switches_added: bool = False
+    group_numbers_added: bool = False
+    group_selects_added: bool = False

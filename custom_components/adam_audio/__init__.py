@@ -1,5 +1,4 @@
-"""
-ADAM Audio Home Assistant Integration.
+"""ADAM Audio Home Assistant Integration.
 
 Supports ADAM Audio A-Series studio monitors via AES70/OCA over UDP.
 Auto-discovers speakers via mDNS (_oca._udp.local.) and also accepts
@@ -15,15 +14,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import homeassistant.helpers.config_validation as cv
 from homeassistant.const import Platform
+import homeassistant.helpers.config_validation as cv
 
-from .const import (
-    DOMAIN,
-    LOGGER,
-)
+from .const import DOMAIN, LOGGER
 from .coordinator import AdamAudioCoordinator
-from .data import AdamAudioData
+from .data import AdamAudioData, AdamAudioIntegrationData
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -36,18 +32,22 @@ _WWW_DIR = Path(__file__).parent / "www"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
-    Platform.SWITCH,
-    Platform.SELECT,
     Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SWITCH,
 ]
 
 
 async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     """Register Lovelace cards if present (HACS install only)."""
+    # Initialize integration-wide data in hass.data[DOMAIN]
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = AdamAudioIntegrationData(coordinators={})
+
     if not _WWW_DIR.is_dir():
         return True
 
-    from homeassistant.components.frontend import add_extra_js_url
+    from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
 
     card_url = "/adam_audio/adam-audio-card.js"
     card_js = str(_WWW_DIR / "adam-audio-card.js")
@@ -69,7 +69,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
             )
         except AttributeError:
             # Fallback for newer Home Assistant versions
-            from homeassistant.components.http import StaticPathConfig
+            from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
 
             await hass.http.async_register_static_paths(
                 [
@@ -91,15 +91,12 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     return True
 
 
-def get_coordinators() -> list[AdamAudioCoordinator]:
+def get_coordinators(hass: HomeAssistant) -> list[AdamAudioCoordinator]:
     """Return all currently loaded ADAM Audio coordinators."""
-    return list(_coordinators.values()) if _coordinators else []
-
-
-# Module-level registry of coordinators, keyed by config entry ID.
-# This replaces hass.data[DOMAIN] for coordinator storage and is used
-# by group entities to locate all active device coordinators.
-_coordinators: dict[str, AdamAudioCoordinator] = {}
+    data: AdamAudioIntegrationData | None = hass.data.get(DOMAIN)
+    if not data:
+        return []
+    return list(data.coordinators.values())
 
 
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
@@ -116,7 +113,11 @@ async def async_setup_entry(
         coordinator=coordinator,
     )
 
-    _coordinators[entry.entry_id] = coordinator
+    # Ensure integration-wide state exists (especially for tests)
+    integration_data = hass.data.setdefault(
+        DOMAIN, AdamAudioIntegrationData(coordinators={})
+    )
+    integration_data.coordinators[entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -133,15 +134,20 @@ async def async_unload_entry(
     """Unload a config entry cleanly."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        coordinator = _coordinators.pop(entry.entry_id, None)
-        if coordinator:
-            await coordinator.async_shutdown()
+        # Integration data might missing if async_setup was skipped (e.g. tests)
+        integration_data: AdamAudioIntegrationData | None = hass.data.get(DOMAIN)
+        if integration_data:
+            coordinator = integration_data.coordinators.pop(entry.entry_id, None)
+            if coordinator:
+                await coordinator.async_shutdown()
 
-        LOGGER.debug(
-            "Unloaded entry %s; %d coordinators remaining",
-            entry.entry_id,
-            len(_coordinators),
-        )
+            LOGGER.debug(
+                "Unloaded entry %s; %d coordinators remaining",
+                entry.entry_id,
+                len(integration_data.coordinators),
+            )
+        else:
+            LOGGER.debug("Skipping coordinator cleanup (domain data missing)")
 
     return unload_ok
 

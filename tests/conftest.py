@@ -34,22 +34,12 @@ def auto_enable_custom_integrations(
 
 @pytest.fixture(autouse=True)
 def clear_state_leakage() -> None:
-    """Clear global state to prevent leakage across tests."""
-    from custom_components.adam_audio import _coordinators
+    """Clear global state to prevent leakage across tests.
 
-    _coordinators.clear()
-
-    import custom_components.adam_audio.switch as switch_mod
-
-    switch_mod._group_switches_added = False
-
-    import custom_components.adam_audio.number as number_mod
-
-    number_mod._group_numbers_added = False
-
-    import custom_components.adam_audio.select as select_mod
-
-    select_mod._group_selects_added = False
+    Note: With state moved to hass.data[DOMAIN], the fresh 'hass' fixture
+    provided by pytest-homeassistant-custom-component already handles
+    most resets. This fixture is kept for future-proofing.
+    """
 
 
 @pytest.fixture
@@ -92,11 +82,19 @@ def mock_state() -> AdamAudioState:
 @pytest.fixture
 def mock_client(mock_state: AdamAudioState) -> Generator[MagicMock]:
     """Create a mock AdamAudioClient."""
-    with patch(
-        "custom_components.adam_audio.coordinator.AdamAudioClient",
-        autospec=True,
-    ) as mock:
-        client = mock.return_value
+    with (
+        patch(
+            "custom_components.adam_audio.coordinator.AdamAudioClient",
+            autospec=True,
+        ) as mock_coord,
+        patch(
+            "custom_components.adam_audio.config_flow.AdamAudioClient",
+            autospec=True,
+        ) as mock_flow,
+    ):
+        # Both mocks point to the same return value
+        client = mock_coord.return_value
+        mock_flow.return_value = client
         client.host = MOCK_HOST
         client.port = MOCK_PORT
         client.available = True

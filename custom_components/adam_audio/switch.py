@@ -18,23 +18,19 @@ from .entity import AdamAudioEntity, AdamAudioGroupEntity
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-    from .data import AdamAudioConfigEntry
-
-# Track whether group switches have been added (module-level flag).
-_group_switches_added: bool = False
+    from .data import AdamAudioConfigEntry, AdamAudioIntegrationData
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: AdamAudioConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the switch platform."""
-    global _group_switches_added  # noqa: PLW0603
-
     coordinator = entry.runtime_data.coordinator
+    integration_data: AdamAudioIntegrationData = hass.data[DOMAIN]
 
     entities: list[SwitchEntity] = [
         AdamAudioSleepSwitch(coordinator),
@@ -42,8 +38,8 @@ async def async_setup_entry(
     ]
 
     # Create group entities exactly once per HA lifecycle.
-    if not _group_switches_added:
-        _group_switches_added = True
+    if not integration_data.group_switches_added:
+        integration_data.group_switches_added = True
         entities += [
             AdamAudioGroupSleepSwitch(hass),
             AdamAudioGroupMuteSwitch(hass),

@@ -1,6 +1,8 @@
 # The contents of this file is based on https://github.com/home-assistant/core/blob/dev/pyproject.toml
 
+required-version = ">=0.15.1"
 target-version = "py314"
+exclude = ["scripts"]
 
 [lint]
 select = [
@@ -8,40 +10,91 @@ select = [
 ]
 
 ignore = [
-    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
-    "D203", # no-blank-line-before-class (incompatible with formatter)
-    "D212", # multi-line-summary-first-line (incompatible with formatter)
-    "COM812", # incompatible with formatter
-    "ISC001", # incompatible with formatter
+    # -- Formatter conflicts
+    # Ref: https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+    "W191",   # indentation contains tabs
+    "E111",   # indentation is not a multiple of X
+    "E114",   # indentation is not a multiple of X (comment)
+    "E117",   # over-indented
+    "D206",   # docstring should be indented with spaces
+    "D300",   # use triple double quotes
+    "Q",      # flake8-quotes
+    "COM812", # missing trailing comma (incompatible with formatter)
+    "COM819", # trailing comma prohibited
+    "ISC001", # implicit string concat (incompatible with formatter)
 
-    # Project-specific relaxations
-    "D213", # multi-line-summary-second-line (conflicts with D212)
-    "D205", # missing-blank-line-after-summary (conflicts with narrative docstrings)
-    "TRY003", # raise-vanilla-args (HA pattern for error messages)
-    "EM101", # raw-string-in-exception
-    "EM102", # f-string-in-exception (HA patterns commonly use f-strings)
-    "FBT001", # boolean-type-hint-positional-argument (HA entities use bool params)
-    "FBT003", # boolean-positional-value-in-call
-    "PLR2004", # magic-value-comparison (protocol-specific constants)
-    "RUF002", # ambiguous-unicode-character-docstring (em-dash, bullet chars)
-    "ARG002", # unused-method-argument (HA platform pattern **kwargs)
-    "SIM105", # suppressible-exception (contextlib.suppress not always clearer)
-    "TRY300", # try-consider-else
-    "D107", # undocumented-public-init (HA entity pattern)
-    "D105", # undocumented-magic-method
-    "D400", # missing-trailing-period (summary lines without period at end)
-    "D415", # missing-terminal-punctuation
-    "D401", # non-imperative-mood
-    "D101", # undocumented-public-class (HA entities are self-documenting)
-    "D102", # undocumented-public-method (HA entity methods are standard)
-    "E501", # line-too-long (URLs, error messages, etc.)
-    "BLE001", # blind-except (protocol resilience)
-    "ANN206", # missing-return-type-class-method (properties)
-    "ANN204", # missing-return-type-special-method
-    "TCH",    # type-checking blocks
-    "PLR0913", # too many arguments
-    "SLF001", # private member accessed
-    "PLC0415", # import-outside-top-level (deferred/lazy imports for HA patterns)
+    # -- Docstring rules (aligned with HA Core)
+    "D202",   # no-blank-line-after-function-docstring
+    "D203",   # no-blank-line-before-class (incompatible with D211)
+    "D213",   # multi-line-summary-second-line (incompatible with D212)
+    "D406",   # section-name-should-end-with-newline
+    "D407",   # dashed-underline-after-section
+    "D417",   # missing argument descriptions in docstring
+
+    # -- Complexity / size limits (aligned with HA Core)
+    "PLR0911", # too-many-return-statements
+    "PLR0912", # too-many-branches
+    "PLR0913", # too-many-arguments
+    "PLR0915", # too-many-statements
+    "PLR2004", # magic-value-comparison
+
+    # -- Pylint rules (aligned with HA Core)
+    "PLC1901", # compare-to-empty-string (too many false positives)
+    "PLE0605", # invalid-all-format (ruff doesn't understand generated __all__)
+    "PLW0108", # unnecessary-lambda
+    "PLW1641", # eq-without-hash
+    "PLW2901", # redefined-loop-name
+
+    # -- Async rules (aligned with HA Core)
+    "ASYNC109", # async-function-with-timeout
+    "ASYNC110", # async-sleep-in-loop
+    "ASYNC240", # async-file-system
+
+    # -- Pytest rules (aligned with HA Core)
+    "PT011",  # pytest-raises-too-broad
+    "PT018",  # pytest-composite-assertion
+
+    # -- Ruff rules (aligned with HA Core)
+    "RUF001", # ambiguous-unicode-character-string
+    "RUF002", # ambiguous-unicode-character-docstring
+    "RUF003", # ambiguous-unicode-character-comment
+    "RUF015", # unnecessary-iterable-allocation-for-first-element
+
+    # -- Simplify rules (aligned with HA Core)
+    "SIM102", # collapsible-if
+    "SIM103", # needless-bool
+    "SIM108", # if-else-block-instead-of-if-exp
+    "SIM115", # open-file-with-context-handler
+
+    # -- Type checking (aligned with HA Core)
+    # Moving imports into type-checking blocks can mess with pytest.patch()
+    "TC001",  # typing-only-first-party-import
+    "TC002",  # typing-only-third-party-import
+    "TC003",  # typing-only-standard-library-import
+    "TC006",  # runtime-cast-value
+
+    # -- Try/except rules (aligned with HA Core)
+    "TRY003", # raise-vanilla-args
+    "TRY400", # error-instead-of-exception
+
+    # -- Pyupgrade rules (aligned with HA Core)
+    "UP046",  # non-pep695-generic-class
+    "UP047",  # non-pep695-generic-function
+    "UP049",  # private-type-parameter
+
+    # -- Other (aligned with HA Core)
+    "E501",    # line-too-long
+    "FURB116", # use-int-bin-oct-builtin
+
+    # -- Project-specific relaxations (categories not selected by HA Core)
+    "ANN204",  # missing-return-type-special-method
+    "ANN206",  # missing-return-type-class-method
+    "ANN401",  # dynamically-typed-expressions (typing.Any)
+    "ARG002",  # unused-method-argument (HA platform pattern **kwargs)
+    "EM101",   # raw-string-in-exception
+    "EM102",   # f-string-in-exception
+    "FBT001",  # boolean-type-hint-positional-argument
+    "FBT003",  # boolean-positional-value-in-call
 ]
 
 [lint.per-file-ignores]
@@ -50,12 +103,14 @@ ignore = [
     "ANN",     # type annotations optional in tests
     "D",       # docstring rules relaxed in tests
     "ARG001",  # unused function argument (pytest fixtures)
+    "SLF001",  # private member access (testing internals)
 ]
 "lib/tests/**/*.py" = [
     "S101",    # assert is fine in tests
     "ANN",     # type annotations optional in tests
     "D",       # docstring rules relaxed in tests
     "ARG001",  # unused function argument (pytest fixtures)
+    "SLF001",  # private member access (testing internals)
     "INP001",  # implicit namespace package (no __init__.py by design)
 ]
 "lib/pyadamaudiocontroller/**/*.py" = [
@@ -72,11 +127,28 @@ ignore = [
     "PTH123",  # open() vs Path.open()
 ]
 
+[lint.flake8-import-conventions.extend-aliases]
+voluptuous = "vol"
+"homeassistant.helpers.config_validation" = "cv"
+"homeassistant.helpers.device_registry" = "dr"
+"homeassistant.helpers.entity_registry" = "er"
+
 [lint.flake8-pytest-style]
 fixture-parentheses = false
+mark-parentheses = false
 
-[lint.pyupgrade]
-keep-runtime-typing = true
+[lint.flake8-tidy-imports.banned-api]
+"async_timeout".msg = "use asyncio.timeout instead"
+"pytz".msg = "use zoneinfo instead"
+
+[lint.isort]
+force-sort-within-sections = true
+known-first-party = ["homeassistant", "custom_components.adam_audio"]
+combine-as-imports = true
+split-on-trailing-comma = false
 
 [lint.mccabe]
 max-complexity = 25
+
+[lint.pydocstyle]
+convention = "google"

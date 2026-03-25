@@ -15,16 +15,16 @@ Controls each speaker individually and provides a virtual **All Speakers** group
 
 ## Features
 
-| Control | Entity Type | Notes |
+| Entity | Type | Description |
 |---|---|---|
-| Mute / Unmute | `switch` | |
-| Sleep / Wake | `switch` | Standby mode |
-| Input Source | `select` | RCA or XLR |
-| Voicing | `select` | Pure, UNR, Ext |
-| Bass | `number` | −2 to +1 dB |
-| Desk | `number` | −2 to 0 dB |
-| Presence | `number` | −1 to +1 dB |
-| Treble | `number` | −1 to +1 dB |
+| Sleep | `switch` | Toggle standby mode |
+| Mute | `switch` | Mute / unmute the monitor |
+| Input Source | `select` | Switch between RCA and XLR inputs |
+| Voicing | `select` | Choose Pure, UNR, or Ext voicing profile |
+| Bass | `number` | Adjust bass shelf (−2 to +1) |
+| Desk | `number` | Adjust desk correction (−2 to 0) |
+| Presence | `number` | Adjust presence (−1 to +1) |
+| Treble | `number` | Adjust treble shelf (−1 to +1) |
 
 Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
 
@@ -248,6 +248,8 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 
 > **Warning:** Avoid opening the official **ADAM Audio A Control** app while this integration is running. Although you can open it, doing so will cause the speakers to reset their active commands to the ones sent by A Control, overriding any state set by this integration.
 
+> **Note:** Commands can take a few seconds to take effect on the speakers. This is expected behavior.
+
 | Symptom | Fix |
 |---|---|
 | Speaker not discovered | Check the speaker is on the same network/VLAN as HA. Try the manual IP method. |
@@ -286,11 +288,11 @@ More info, see [CONTRIBUTING.md#repository-structure](CONTRIBUTING.md#repository
 - [x] **Add support for more ADAM Audio speaker models**: tested with A4V only
 - [x] **Propose this integration to HACS**
 - [x] **Extract protocol library to PyPI** (`pyadamaudiocontroller`)
-- [ ] **Propose this integration to Home Assistant Core**: ongoing
+- [x] **Propose this integration to Home Assistant Core**: ongoing
 - [x] **Enhance connectivity and error handling**:
   - [x] add retry logic,
   - [x] implement a proper keepalive mechanism,
-  - [ ] better error messages
+  - [x] better error messages
 
 ---
 

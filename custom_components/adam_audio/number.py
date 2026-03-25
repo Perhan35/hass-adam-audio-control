@@ -36,12 +36,9 @@ from .entity import AdamAudioEntity, AdamAudioGroupEntity
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-    from .data import AdamAudioConfigEntry
-
-# Track whether group numbers have been added (module-level flag).
-_group_numbers_added: bool = False
+    from .data import AdamAudioConfigEntry, AdamAudioIntegrationData
 
 
 # ── Entity descriptors ────────────────────────────────────────────────────────
@@ -115,19 +112,18 @@ _NUMBER_DESCRIPTORS: tuple[_NumberDesc, ...] = (
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: AdamAudioConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the number platform."""
-    global _group_numbers_added  # noqa: PLW0603
-
     coordinator = entry.runtime_data.coordinator
+    integration_data: AdamAudioIntegrationData = hass.data[DOMAIN]
 
     entities: list[NumberEntity] = [
         AdamAudioNumber(coordinator, desc) for desc in _NUMBER_DESCRIPTORS
     ]
 
-    if not _group_numbers_added:
-        _group_numbers_added = True
+    if not integration_data.group_numbers_added:
+        integration_data.group_numbers_added = True
         entities += [AdamAudioGroupNumber(hass, desc) for desc in _NUMBER_DESCRIPTORS]
 
     async_add_entities(entities)

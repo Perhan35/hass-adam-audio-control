@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Validate adam_audio integration against HA Core's ruff & mypy rules.
+#
+# Usage:
+#   scripts/validate_core                    # uses HA_CORE_PATH or ../ha-core
+#   scripts/validate_core /path/to/ha-core   # explicit path
+#
+# Prerequisites:
+#   1. Run gen_core.py and copy output into your ha-core checkout
+#   2. ha-core venv must have ruff and mypy installed
+
+set -e
+cd "$(dirname "$0")/.."
+
+HA_CORE="${1:-${HA_CORE_PATH:-$(cd .. && pwd)/ha-core}}"
+COMPONENT="homeassistant/components/adam_audio"
+
+if [ ! -f "$HA_CORE/pyproject.toml" ]; then
+    echo "Error: ha-core not found at $HA_CORE"
+    echo "Usage: scripts/validate_core [path-to-ha-core]"
+    echo "  Or set HA_CORE_PATH environment variable"
+    exit 1
+fi
+
+if [ ! -d "$HA_CORE/$COMPONENT" ]; then
+    echo "Error: $COMPONENT not found in $HA_CORE"
+    echo "Run gen_core.py first and copy output into ha-core"
+    exit 1
+fi
+
+cd "$HA_CORE"
+
+# Activate ha-core venv if present
+if [ -f "venv/bin/activate" ]; then
+    # shellcheck disable=SC1091
+    source venv/bin/activate
+fi
+
+echo "=== Ruff check (HA Core rules) ==="
+python -m ruff check "$COMPONENT/"
+
+echo "=== Mypy ==="
+python -m mypy "$COMPONENT/"
+
+echo ""
+echo "All Core validation checks passed!"

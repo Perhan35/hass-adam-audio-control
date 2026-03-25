@@ -15,5 +15,13 @@ ruff format .
 scripts/tests lib
 scripts/tests integration
 
+# Validate against HA Core ruff & mypy rules if ha-core is available
+HA_CORE="${HA_CORE_PATH:-$(cd .. && pwd)/ha-core}"
+if [ -d "$HA_CORE/homeassistant/components/adam_audio" ]; then
+    echo ""
+    echo "=== Core validation (ruff + mypy) ==="
+    scripts/validate_core "$HA_CORE"
+fi
+
 echo ""
 echo "All checks passed!"

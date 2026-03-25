@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.components import zeroconf
+
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.selector import (
@@ -25,6 +25,7 @@ from homeassistant.helpers.selector import (
     NumberSelectorMode,
     TextSelector,
 )
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .client import AdamAudioClient
 from .const import (
@@ -102,7 +103,7 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
     # ── Zeroconf discovery ────────────────────────────────────────────────────
 
     async def async_step_zeroconf(
-        self, discovery_info: zeroconf.ZeroconfServiceInfo
+        self, discovery_info: ZeroconfServiceInfo
     ) -> ConfigFlowResult:
         """Handle zeroconf discovery of an _oca._udp.local. service."""
         host: str = discovery_info.host
@@ -181,11 +182,12 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
             connected = await client.async_setup()
             if not connected:
                 return None
-            return client.device_name, client.description, client.serial
-        except Exception:
+        except OSError, TimeoutError, ValueError, RuntimeError:
             LOGGER.debug(
                 "Connection attempt to %s:%d failed", host, port, exc_info=True
             )
             return None
+        else:
+            return client.device_name, client.description, client.serial
         finally:
             await client.async_shutdown()

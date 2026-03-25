@@ -28,31 +28,27 @@ from .entity import AdamAudioEntity, AdamAudioGroupEntity
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-    from .data import AdamAudioConfigEntry
-
-# Track whether group selects have been added (module-level flag).
-_group_selects_added: bool = False
+    from .data import AdamAudioConfigEntry, AdamAudioIntegrationData
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: AdamAudioConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the select platform."""
-    global _group_selects_added  # noqa: PLW0603
-
     coordinator = entry.runtime_data.coordinator
+    integration_data: AdamAudioIntegrationData = hass.data[DOMAIN]
 
     entities: list[SelectEntity] = [
         AdamAudioVoicingSelect(coordinator),
         AdamAudioInputSelect(coordinator),
     ]
 
-    if not _group_selects_added:
-        _group_selects_added = True
+    if not integration_data.group_selects_added:
+        integration_data.group_selects_added = True
         entities += [
             AdamAudioGroupVoicingSelect(hass),
             AdamAudioGroupInputSelect(hass),

@@ -19,13 +19,14 @@ State management
 from __future__ import annotations
 
 import asyncio
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
+import time
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.exceptions import HomeAssistantError
 from pyadamaudiocontroller import Device
+
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import LOGGER
 
@@ -87,7 +88,7 @@ class AdamAudioClient:
             LOGGER.info(
                 "Connected to ADAM Audio '%s' at %s", self.description, self.host
             )
-        except OSError as err:
+        except (OSError, TimeoutError, ValueError, RuntimeError) as err:
             LOGGER.warning("Cannot reach ADAM Audio device at %s — %s", self.host, err)
             self.available = False
             return False
@@ -107,10 +108,11 @@ class AdamAudioClient:
                     self._fetch_state_blocking
                 )
                 self.available = success
-            except Exception:
+            except (OSError, TimeoutError, ValueError, RuntimeError) as err:
                 LOGGER.debug(
-                    "State fetch critical failure for %s",
+                    "State fetch critical failure for %s: %s",
                     self.host,
+                    err,
                     exc_info=True,
                 )
                 self.available = False
@@ -152,14 +154,31 @@ class AdamAudioClient:
             self.state.desk = int(responses[5].params[0].value)
             self.state.presence = int(responses[6].params[0].value)
             self.state.treble = int(responses[7].params[0].value)
-        except Exception:
+        except (
+            OSError,
+            TimeoutError,
+            ValueError,
+            RuntimeError,
+            IndexError,
+            AttributeError,
+            TypeError,
+        ):
             LOGGER.warning("Batched poll failed for %s", self.host, exc_info=True)
             return False
         else:
             return True
 
+    @property
+    def _dev(self) -> Device:
+        """Return the underlying device, raising if not connected."""
+        if self._device is None:
+            raise HomeAssistantError(f"Device at {self.host} is not connected")
+        return self._device
+
     def _ensure_keepalive(self) -> None:
         """Send keepalive only if the session is truly stale (>30s)."""
+        if self._device is None:
+            return
         if time.monotonic() - self._last_keepalive > self.KEEPALIVE_TIMEOUT:
             try:
                 self._device.send_keepalive(timeout_secs=1.0)
@@ -231,7 +250,7 @@ class AdamAudioClient:
                             attempt,
                             self.MAX_RETRIES,
                         )
-                    except Exception:
+                    except OSError, TimeoutError, ValueError, RuntimeError:
                         LOGGER.debug(
                             "Verify read failed for %s (attempt %d/%d)",
                             set_fn.__name__,
@@ -270,9 +289,9 @@ class AdamAudioClient:
     async def async_set_mute(self, value: bool) -> None:
         """Set the mute state."""
         await self._async_send_with_retry(
-            self._device.set_mute,
+            self._dev.set_mute,
             (value,),
-            self._device.get_mute,
+            self._dev.get_mute,
             value,
         )
         self.state.mute = value
@@ -280,9 +299,9 @@ class AdamAudioClient:
     async def async_set_sleep(self, value: bool) -> None:
         """Set the sleep/standby state."""
         await self._async_send_with_retry(
-            self._device.set_sleep,
+            self._dev.set_sleep,
             (value,),
-            self._device.get_sleep,
+            self._dev.get_sleep,
             value,
         )
         self.state.sleep = value
@@ -290,9 +309,9 @@ class AdamAudioClient:
     async def async_set_input(self, value: int) -> None:
         """Set the input source."""
         await self._async_send_with_retry(
-            self._device.set_input,
+            self._dev.set_input,
             (value,),
-            self._device.get_input,
+            self._dev.get_input,
             value,
         )
         self.state.input_source = value
@@ -300,9 +319,9 @@ class AdamAudioClient:
     async def async_set_voicing(self, value: int) -> None:
         """Set the voicing mode."""
         await self._async_send_with_retry(
-            self._device.set_voicing,
+            self._dev.set_voicing,
             (value,),
-            self._device.get_voicing,
+            self._dev.get_voicing,
             value,
         )
         self.state.voicing = value
@@ -310,9 +329,9 @@ class AdamAudioClient:
     async def async_set_bass(self, value: int) -> None:
         """Set the bass EQ level."""
         await self._async_send_with_retry(
-            self._device.set_bass,
+            self._dev.set_bass,
             (value,),
-            self._device.get_bass,
+            self._dev.get_bass,
             value,
         )
         self.state.bass = value
@@ -320,9 +339,9 @@ class AdamAudioClient:
     async def async_set_desk(self, value: int) -> None:
         """Set the desk EQ level."""
         await self._async_send_with_retry(
-            self._device.set_desk,
+            self._dev.set_desk,
             (value,),
-            self._device.get_desk,
+            self._dev.get_desk,
             value,
         )
         self.state.desk = value
@@ -330,9 +349,9 @@ class AdamAudioClient:
     async def async_set_presence(self, value: int) -> None:
         """Set the presence EQ level."""
         await self._async_send_with_retry(
-            self._device.set_presence,
+            self._dev.set_presence,
             (value,),
-            self._device.get_presence,
+            self._dev.get_presence,
             value,
         )
         self.state.presence = value
@@ -340,9 +359,9 @@ class AdamAudioClient:
     async def async_set_treble(self, value: int) -> None:
         """Set the treble EQ level."""
         await self._async_send_with_retry(
-            self._device.set_treble,
+            self._dev.set_treble,
             (value,),
-            self._device.get_treble,
+            self._dev.get_treble,
             value,
         )
         self.state.treble = value

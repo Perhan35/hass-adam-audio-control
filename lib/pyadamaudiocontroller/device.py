@@ -7,6 +7,7 @@ and socket lifecycle management required for long-running integrations.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import socket
 import struct
@@ -56,10 +57,8 @@ class Device:
 
     def close(self) -> None:
         """Release the UDP socket."""
-        try:
+        with contextlib.suppress(OSError):
             self.sock.close()
-        except OSError:
-            pass
 
     def drain(self) -> None:
         """Discard all pending packets in the UDP receive buffer to prevent stale data."""
@@ -72,10 +71,8 @@ class Device:
         except TimeoutError, BlockingIOError, OSError:
             pass
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 self.sock.settimeout(original_timeout)
-            except OSError:
-                pass
 
     # ── Low-level I/O ────────────────────────────────────────────────────────
 

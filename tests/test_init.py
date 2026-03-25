@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from custom_components.adam_audio import _async_reload_entry, async_setup
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-
-from custom_components.adam_audio import _async_reload_entry, async_setup
 
 
 async def test_setup_entry(

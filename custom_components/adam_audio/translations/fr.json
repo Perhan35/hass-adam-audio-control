@@ -5,8 +5,12 @@
         "title": "Ajouter une enceinte ADAM Audio",
         "description": "Entrez l'adresse IP de votre enceinte ADAM Audio A-Series. Si vous ne connaissez pas le port, laissez la valeur par défaut ({default_port}).",
         "data": {
-          "host": "Adresse IP",
-          "port": "Port UDP"
+          "host": "Adresse IP ou nom d'hôte",
+          "port": "Port UDP (défaut 49494)"
+        },
+        "data_description": {
+          "host": "Adresse IP ou nom d'hôte de votre enceinte ADAM Audio.",
+          "port": "Port UDP de votre enceinte ADAM Audio."
         }
       },
       "zeroconf_confirm": {

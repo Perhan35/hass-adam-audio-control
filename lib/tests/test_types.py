@@ -1,11 +1,12 @@
 import io
+import struct
 
-import pytest
 from pyadamaudiocontroller.command import Command
 from pyadamaudiocontroller.keepalive import Keepalive
 from pyadamaudiocontroller.message import Message
 from pyadamaudiocontroller.response import Response
 from pyadamaudiocontroller.types import OcaInt8, OcaString, OcaUint16
+import pytest
 
 
 def test_oca_types():
@@ -96,8 +97,6 @@ def test_keepalive_decode_invalid_size():
 
 def test_message_decode_bad_sync():
     """Test Message.decode raises RuntimeError for bad sync byte."""
-    import struct
-
     bad_data = struct.pack(Message.FORMAT, 0x00, 1, 16, 1, 1)
     with pytest.raises(RuntimeError, match="Bad sync byte"):
         Message.decode(io.BytesIO(bad_data))

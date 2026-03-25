@@ -1,8 +1,8 @@
 """Base entity classes for ADAM Audio.
 
 Two flavours:
-  AdamAudioEntity      – CoordinatorEntity bound to a single physical device.
-  AdamAudioGroupEntity – Plain Entity that fans commands out to ALL devices
+  AdamAudioEntity      - CoordinatorEntity bound to a single physical device.
+  AdamAudioGroupEntity - Plain Entity that fans commands out to ALL devices
                          registered at call-time.  It self-subscribes to every
                          coordinator's update bus so the group state stays fresh.
 """
@@ -16,6 +16,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import get_coordinators
 from .const import DOMAIN, GROUP_DEVICE_ID, GROUP_DEVICE_NAME, MANUFACTURER
 from .coordinator import AdamAudioCoordinator
 
@@ -71,10 +72,7 @@ class AdamAudioGroupEntity(Entity):
 
     def _coordinators(self) -> list[AdamAudioCoordinator]:
         """Return all currently loaded device coordinators."""
-        # Import here to avoid circular imports
-        from . import get_coordinators
-
-        return get_coordinators()
+        return get_coordinators(self._hass)
 
     # ── HA lifecycle hooks ───────────────────────────────────────────────────
 
