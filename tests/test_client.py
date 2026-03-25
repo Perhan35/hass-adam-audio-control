@@ -22,7 +22,7 @@ async def test_client_fetch_state(adam_client: AdamAudioClient) -> None:
     """Test fetching all states from device."""
     # Mock the batched fetch call
     pdus = []
-    for val in [5, 1, 1, 2, 1, 0, -1, 0]:
+    for val in (5, 1, 1, 2, 1, 0, -1, 0):
         param = MagicMock()
         param.value = val
         pdu = MagicMock()
@@ -175,7 +175,7 @@ async def test_client_keepalive_oserror_during_fetch(
     adam_client._device.send_keepalive.side_effect = OSError("timeout")
 
     pdus = []
-    for val in [1, 0, 1, 0, 0, 0, 0, 0]:
+    for val in (1, 0, 1, 0, 0, 0, 0, 0):
         param = MagicMock()
         param.value = val
         pdu = MagicMock()

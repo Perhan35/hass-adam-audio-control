@@ -115,9 +115,10 @@ def _transform_test_content(filename: str, content: str) -> str:
     )
 
     # 3. Fix the conftest import path used in test_config_flow.py
+    #    pylint W7421 requires a relative import within the test package
     content = content.replace(
         "from tests.conftest import",
-        "from tests.components.adam_audio.conftest import",
+        "from .conftest import",
     )
 
     # 4. Remove the auto_enable_custom_integrations fixture from conftest.py

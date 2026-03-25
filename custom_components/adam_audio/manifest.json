@@ -1,9 +1,7 @@
 {
   "domain": "adam_audio",
   "name": "ADAM Audio",
-  "codeowners": [
-    "@Perhan35"
-  ],
+  "codeowners": ["@Perhan35"],
   "config_flow": true,
   "dependencies": [
     "http",
@@ -13,17 +11,13 @@
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Perhan35/hass-adam-audio-control/issues",
-  "loggers": [
-    "pyadamaudiocontroller"
-  ],
-  "requirements": [
-    "pyadamaudiocontroller>=1.0.0"
-  ],
+  "loggers": ["pyadamaudiocontroller"],
+  "requirements": ["pyadamaudiocontroller>=1.0.0"],
   "version": "0.3.1",
   "zeroconf": [
     {
-      "type": "_oca._udp.local.",
-      "name": "aseries*"
+      "name": "aseries*",
+      "type": "_oca._udp.local."
     }
   ]
 }
