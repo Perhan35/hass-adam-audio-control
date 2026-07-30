@@ -4,4 +4,13 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-python3 -m pip install --requirement requirements.txt
+# shellcheck source=scripts/_venv.sh
+source scripts/_venv.sh
+
+pip_args=(install --requirement requirements.txt)
+
+if [[ "$1" == "--upgrade" ]]; then
+    pip_args+=(--upgrade)
+fi
+
+python3 -m pip "${pip_args[@]}"

@@ -22,7 +22,8 @@
       "cannot_connect": "Impossible de se connecter à l'appareil. Vérifiez que l'enceinte est allumée et accessible sur votre réseau local, puis réessayez."
     },
     "abort": {
-      "already_configured": "Cette enceinte est déjà configurée. Son adresse réseau a été mise à jour."
+      "already_configured": "Cette enceinte est déjà configurée. Son adresse réseau a été mise à jour.",
+      "cannot_connect": "Impossible de se connecter à l'appareil détecté. Vérifiez que l'enceinte est allumée ; elle sera détectée à nouveau automatiquement."
     }
   },
   "entity": {

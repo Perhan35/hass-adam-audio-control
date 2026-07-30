@@ -2,6 +2,7 @@ import io
 import struct
 
 from pyadamaudiocontroller.command import Command
+from pyadamaudiocontroller.exceptions import AdamAudioProtocolError
 from pyadamaudiocontroller.keepalive import Keepalive
 from pyadamaudiocontroller.message import Message
 from pyadamaudiocontroller.response import Response
@@ -96,17 +97,41 @@ def test_keepalive_decode_invalid_size():
 
 
 def test_message_decode_bad_sync():
-    """Test Message.decode raises RuntimeError for bad sync byte."""
+    """Test Message.decode raises AdamAudioProtocolError for bad sync byte."""
     bad_data = struct.pack(Message.FORMAT, 0x00, 1, 16, 1, 1)
-    with pytest.raises(RuntimeError, match="Bad sync byte"):
+    with pytest.raises(AdamAudioProtocolError, match="Bad sync byte"):
         Message.decode(io.BytesIO(bad_data))
 
 
 def test_response_decode_param_count_mismatch():
-    """Test Response.decode raises ValueError when param_count < expected."""
+    """Test Response.decode raises when param_count < expected.
+
+    AdamAudioProtocolError subclasses ValueError, so catching ValueError
+    (the pre-1.1.0 behaviour) keeps working.
+    """
     binary = b"\x00\x00\x00\x0a" + b"\x00\x00\x00\x01" + b"\x00" + b"\x00"
-    with pytest.raises(ValueError, match="ADAM_AUDIO_PROTOCOL_ERROR"):
+    with pytest.raises(ValueError, match="params"):
         Response.decode(io.BytesIO(binary), param_types=[OcaInt8])
+
+
+def test_truncated_pdu_raises_protocol_error():
+    """Test truncated PDU data raises AdamAudioProtocolError, not struct.error."""
+    with pytest.raises(AdamAudioProtocolError, match="Truncated"):
+        Response.decode(io.BytesIO(b"\x00\x00"))
+
+
+def test_command_decode_param_count_mismatch():
+    """Test Command.decode raises when param_count doesn't match expected types."""
+    binary = struct.pack("!IIIHHB", 17, 1, 2, 0, 0, 1)
+    with pytest.raises(AdamAudioProtocolError, match="Expected 1 parameters"):
+        Command.decode(io.BytesIO(binary))
+
+
+def test_response_decode_length_smaller_than_header():
+    """Test Response.decode raises when the declared length is too small."""
+    binary = struct.pack("!IIBB", 5, 1, 0, 0)
+    with pytest.raises(AdamAudioProtocolError, match="smaller than header size"):
+        Response.decode(io.BytesIO(binary))
 
 
 def test_response_decode_extra_data():

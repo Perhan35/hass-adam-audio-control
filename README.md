@@ -3,7 +3,7 @@
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://hacs.xyz)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue.svg)](https://www.home-assistant.io)
 [![Test and Lint](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml/badge.svg)](https://github.com/Perhan35/hass-adam-audio-control/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-0.3.1-green.svg)](custom_components/adam_audio/manifest.json)
+[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](custom_components/adam_audio/manifest.json)
 [![PyPI](https://img.shields.io/pypi/v/pyadamaudiocontroller.svg)](https://pypi.org/project/pyadamaudiocontroller/)
 [![installs](https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.adam_audio.total)](https://analytics.home-assistant.io/)
 
@@ -120,6 +120,8 @@ Some custom Lovelace cards are included. They are automatically registered as fr
 
 Edit your dashboard and at the bottom the custom Adam Audio cards will display. Select the one you want to add.
 Or add a **Manual card** with the following YAML (replace entity IDs with your own — find them in **Settings → Devices & Services → your speaker**).
+
+On Home Assistant 2026.6 and later, picking any entity from a speaker (e.g. its mute switch) in the card picker also surfaces the ADAM Audio cards as suggestions in the **Community** section, pre-filled with the rest of that speaker's entities.
 
 All cards use the **same configuration schema**, so you can switch between them by changing the `type` field.
 

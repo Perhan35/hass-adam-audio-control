@@ -6,6 +6,7 @@ Originally from the pacontrol library by dmach (https://github.com/dmach/pacontr
 import struct
 from typing import BinaryIO
 
+from .exceptions import AdamAudioProtocolError
 from .types import PDU
 from .util import unpack_from_stream
 
@@ -25,7 +26,7 @@ class Keepalive(PDU):
             (value,) = unpack_from_stream("!H", stream)
             value *= 1000
         else:
-            raise ValueError(f"Invalid keepalive timeout length: {size}")
+            raise AdamAudioProtocolError(f"Invalid keepalive timeout length: {size}")
         return cls(value)
 
     def encode(self) -> bytes:

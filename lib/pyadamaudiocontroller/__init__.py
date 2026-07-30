@@ -2,6 +2,7 @@
 
 from .command import Command
 from .device import Device
+from .exceptions import AdamAudioError, AdamAudioProtocolError
 from .keepalive import Keepalive
 from .message import Message
 from .response import Response
@@ -19,6 +20,8 @@ from .types import (
 
 __all__ = [
     "PDU",
+    "AdamAudioError",
+    "AdamAudioProtocolError",
     "Command",
     "Device",
     "Keepalive",

@@ -22,7 +22,8 @@
       "cannot_connect": "Cannot connect to the device. Make sure the speaker is powered on and reachable on your local network, then try again."
     },
     "abort": {
-      "already_configured": "This speaker is already configured. Its network address has been updated."
+      "already_configured": "This speaker is already configured. Its network address has been updated.",
+      "cannot_connect": "Cannot connect to the discovered device. Make sure the speaker is powered on; it will be discovered again automatically."
     }
   },
   "entity": {

@@ -39,6 +39,7 @@ INTEGRATION_FILES = [
     "select.py",
     "number.py",
     "strings.json",
+    "icons.json",
 ]
 
 # Directories to copy

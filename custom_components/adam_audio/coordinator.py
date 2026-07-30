@@ -8,15 +8,21 @@ parameter.  The GET responses populate client.state with the real device
 values, so changes made via the physical knob or ADAM Audio's A
 Control app are reflected in Home Assistant within one poll cycle.
 
-If the fetch fails (device unreachable), UpdateFailed is raised so HA marks
-all child entities as unavailable until the next successful poll.
+If the fetch fails and the client's consecutive-failure streak reaches
+AdamAudioClient.UNAVAILABLE_AFTER_FAILURES (client.available flips to
+False), UpdateFailed is raised so HA marks all child entities as
+unavailable until the next successful poll. A single dropped poll on its
+own is tolerated and does not affect entity availability.
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -25,8 +31,6 @@ from .client import AdamAudioClient, AdamAudioState
 from .const import (
     CONF_DESCRIPTION,
     CONF_DEVICE_NAME,
-    CONF_HOST,
-    CONF_PORT,
     CONF_SERIAL,
     DOMAIN,
     LOGGER,
@@ -99,7 +103,14 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
         await self.async_config_entry_first_refresh()
 
     async def async_shutdown(self) -> None:
-        """Release resources when the config entry is unloaded."""
+        """Release resources when the config entry is unloaded.
+
+        Must cancel the base class's scheduled refresh timer first —
+        otherwise a poll already queued via loop.call_at() can still fire
+        after the socket below is closed, sending on a dead file
+        descriptor (OSError: Bad file descriptor).
+        """
+        await super().async_shutdown()
         await self.client.async_shutdown()
 
     # ── Coordinator update callback ───────────────────────────────────────────
@@ -110,22 +121,47 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
         Sends keepalive + all GET commands.  On success, client.state holds
         the values the device reported; entities read from there.
         Raises UpdateFailed to mark entities unavailable if unreachable.
+
+        Availability is read from client.available rather than this poll's
+        own result: the client debounces failures over several consecutive
+        polls, so a single dropped poll (e.g. a device rebooting after being
+        power-cycled) doesn't flip entities unavailable and back.
+
+        Returns a snapshot copy of the client state: the client mutates its
+        state object in place, so returning it directly would make the
+        coordinator's always_update=False comparison always see "no change"
+        and never notify listeners of polled changes (physical knob or
+        A Control app adjustments).
         """
-        success = await self.client.async_fetch_state()
-        if not success:
+        await self.client.async_fetch_state()
+        if not self.client.available:
             raise UpdateFailed(
                 f"Device '{self.device_description}' unreachable at "
                 f"{self.client.host}:{self.client.port}"
             )
-        return self.client.state
+        return replace(self.client.state)
+
+    @callback
+    def async_notify_state(self) -> None:
+        """Push the client's current state to all entities immediately.
+
+        Used after SET commands so every sibling entity (e.g. numbers whose
+        availability depends on voicing) refreshes without waiting a poll.
+        """
+        self.async_set_updated_data(replace(self.client.state))
 
     # ── Device info (shared by all child entities) ────────────────────────────
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return device info for the device registry."""
+        """Return device info for the device registry.
+
+        The serial number is the preferred identifier (stable even if the
+        hardware name changes); existing registry entries created with the
+        name-based identifier are migrated in async_setup_entry.
+        """
         return DeviceInfo(
-            identifiers={(DOMAIN, self.device_unique_id)},
+            identifiers={(DOMAIN, self.device_serial or self.device_unique_id)},
             name=self.device_description,
             manufacturer=MANUFACTURER,
             model="A-Series",

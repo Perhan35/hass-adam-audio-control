@@ -380,6 +380,10 @@
       tpl.innerHTML = this._template();
       shadow.appendChild(tpl.firstElementChild);
 
+      // Set via textContent so a malicious card config can't inject HTML.
+      shadow.getElementById("device-name").textContent =
+        this._config.title || "Monitor";
+
       this._attachListeners();
     }
 
@@ -387,7 +391,7 @@
       return `
     <ha-card class="card">
       <div class="header">
-        <div class="title" id="device-name">${this._config.title || "Monitor"}</div>
+        <div class="title" id="device-name"></div>
         <div class="power-row">
           <button class="power-toggle" id="btn-mute">Mute</button>
           <button class="power-toggle" id="btn-sleep">Sleep</button>
@@ -674,6 +678,44 @@
     }
   }
 
+  // Maps each entity's registry `translation_key` to the config key this
+  // card expects under `entities:` (see getStubConfig above).
+  const ADAM_AUDIO_ENTITY_KEYS = {
+    mute: "mute",
+    sleep: "sleep",
+    input_source: "input",
+    voicing: "voicing",
+    bass: "bass",
+    desk: "desk",
+    presence: "presence",
+    treble: "treble",
+  };
+
+  // Suggests this card in the "Add Card" picker (HA 2026.6+) when the
+  // selected entity belongs to an ADAM Audio device, pre-filling the other
+  // entities from the same device.
+  function getAdamAudioEntitySuggestion(hass, entityId, cardType, defaultTitle) {
+    const entry = hass.entities?.[entityId];
+    if (!entry || entry.platform !== "adam_audio" || !entry.device_id) return null;
+    if (!(entry.translation_key in ADAM_AUDIO_ENTITY_KEYS)) return null;
+
+    const entities = {};
+    for (const [id, e] of Object.entries(hass.entities)) {
+      if (e.device_id !== entry.device_id || e.platform !== "adam_audio") continue;
+      const key = ADAM_AUDIO_ENTITY_KEYS[e.translation_key];
+      if (key) entities[key] = id;
+    }
+
+    const device = hass.devices?.[entry.device_id];
+    return {
+      config: {
+        type: `custom:${cardType}`,
+        title: device?.name_by_user || device?.name || defaultTitle,
+        entities,
+      },
+    };
+  }
+
   window.customCards = window.customCards || [];
   window.customCards.push({
     type: "adam-audio-backplate-card",
@@ -681,6 +723,9 @@
     description: "Mimics the physical backplate of the ADAM Audio A-Series monitor.",
     preview: false,
     documentationURL: "https://github.com/Perhan35/hass-adam-audio-control",
+    getEntitySuggestion(hass, entityId) {
+      return getAdamAudioEntitySuggestion(hass, entityId, "adam-audio-backplate-card", "Left Monitor");
+    },
   });
 
   console.info(

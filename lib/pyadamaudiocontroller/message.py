@@ -6,6 +6,7 @@ Originally from the pacontrol library by dmach (https://github.com/dmach/pacontr
 import struct
 from typing import BinaryIO
 
+from .exceptions import AdamAudioProtocolError
 from .util import unpack_from_stream
 
 
@@ -35,7 +36,7 @@ class Message:
             pdu_count,
         ) = unpack_from_stream(cls.FORMAT, stream)
         if sync != cls.SYNC:
-            raise RuntimeError(
+            raise AdamAudioProtocolError(
                 f"Bad sync byte: expected 0x{cls.SYNC:02X}, got 0x{sync:02X}"
             )
         return cls(protocol_version, message_size, pdu_type, pdu_count)

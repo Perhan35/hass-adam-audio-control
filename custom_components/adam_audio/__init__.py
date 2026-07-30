@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
+from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 
 from .const import DOMAIN, LOGGER
@@ -47,46 +48,30 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     if not _WWW_DIR.is_dir():
         return True
 
+    # The frontend integration owns the extra-module registry; skip card
+    # registration when it isn't loaded (headless installs, tests).
+    if "frontend" not in hass.config.components:
+        LOGGER.debug("Frontend not loaded; skipping Lovelace card registration")
+        return True
+
     from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
+    from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
 
-    card_url = "/adam_audio/adam-audio-card.js"
-    card_js = str(_WWW_DIR / "adam-audio-card.js")
-
-    backplate_url = "/adam_audio/adam-audio-backplate-card.js"
-    backplate_js = str(_WWW_DIR / "adam-audio-backplate-card.js")
-
-    backplate_alt_url = "/adam_audio/adam-audio-backplate-card-alt.js"
-    backplate_alt_js = str(_WWW_DIR / "adam-audio-backplate-card-alt.js")
-
-    if hasattr(hass, "http") and hass.http is not None:
-        try:
-            hass.http.register_static_path(card_url, card_js, cache_headers=False)
-            hass.http.register_static_path(
-                backplate_url, backplate_js, cache_headers=False
+    cards = [
+        "adam-audio-card.js",
+        "adam-audio-backplate-card.js",
+        "adam-audio-backplate-card-alt.js",
+    ]
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                f"/adam_audio/{name}", str(_WWW_DIR / name), cache_headers=False
             )
-            hass.http.register_static_path(
-                backplate_alt_url, backplate_alt_js, cache_headers=False
-            )
-        except AttributeError:
-            # Fallback for newer Home Assistant versions
-            from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
-
-            await hass.http.async_register_static_paths(
-                [
-                    StaticPathConfig(card_url, card_js, cache_headers=False),
-                    StaticPathConfig(backplate_url, backplate_js, cache_headers=False),
-                    StaticPathConfig(
-                        backplate_alt_url, backplate_alt_js, cache_headers=False
-                    ),
-                ]
-            )
-
-    if "frontend_extra_module_url" not in hass.data:
-        hass.data["frontend_extra_module_url"] = set()
-
-    add_extra_js_url(hass, card_url)
-    add_extra_js_url(hass, backplate_url)
-    add_extra_js_url(hass, backplate_alt_url)
+            for name in cards
+        ]
+    )
+    for name in cards:
+        add_extra_js_url(hass, f"/adam_audio/{name}")
 
     return True
 
@@ -107,6 +92,9 @@ async def async_setup_entry(
     """Set up ADAM Audio from a config entry (one entry = one physical speaker)."""
     coordinator = AdamAudioCoordinator(hass, entry)
     await coordinator.async_setup()  # raises ConfigEntryNotReady if unreachable
+
+    _async_migrate_device_identifiers(hass, coordinator)
+    _async_migrate_entry_unique_id(hass, entry, coordinator)
 
     entry.runtime_data = AdamAudioData(
         client=coordinator.client,
@@ -141,6 +129,20 @@ async def async_unload_entry(
             if coordinator:
                 await coordinator.async_shutdown()
 
+            # The group entities live under the platforms of the entry that
+            # created them, so they were just removed along with this entry.
+            # Reset the flags so the next entry setup recreates them (this
+            # entry reloading, or a remaining entry we schedule below).
+            if integration_data.group_owner_entry_id == entry.entry_id:
+                integration_data.group_owner_entry_id = None
+                integration_data.group_switches_added = False
+                integration_data.group_numbers_added = False
+                integration_data.group_selects_added = False
+                if integration_data.coordinators and not hass.is_stopping:
+                    hass.config_entries.async_schedule_reload(
+                        next(iter(integration_data.coordinators))
+                    )
+
             LOGGER.debug(
                 "Unloaded entry %s; %d coordinators remaining",
                 entry.entry_id,
@@ -150,6 +152,76 @@ async def async_unload_entry(
             LOGGER.debug("Skipping coordinator cleanup (domain data missing)")
 
     return unload_ok
+
+
+def _async_migrate_device_identifiers(
+    hass: HomeAssistant, coordinator: AdamAudioCoordinator
+) -> None:
+    """Move a device registered under its hardware name to its serial number.
+
+    Versions up to 0.3.x identified devices by hardware name.  Updating the
+    existing registry entry in place preserves the device id, so automations
+    and dashboards referencing the device keep working.
+    """
+    if not coordinator.device_serial:
+        return
+    device_registry = dr.async_get(hass)
+    new_identifier = (DOMAIN, coordinator.device_serial)
+    if device_registry.async_get_device(identifiers={new_identifier}):
+        return  # already migrated (or fresh install)
+    old_device = device_registry.async_get_device(
+        identifiers={(DOMAIN, coordinator.device_unique_id)}
+    )
+    if old_device:
+        device_registry.async_update_device(
+            old_device.id, new_identifiers={new_identifier}
+        )
+        LOGGER.debug(
+            "Migrated device %s identifiers to serial %s",
+            coordinator.device_unique_id,
+            coordinator.device_serial,
+        )
+
+
+def _async_migrate_entry_unique_id(
+    hass: HomeAssistant, entry: AdamAudioConfigEntry, coordinator: AdamAudioCoordinator
+) -> None:
+    """Point this entry's own unique_id at the device serial number.
+
+    Versions up to 0.3.x set the config entry's unique_id to the hardware
+    name (e.g. "ASeries-414725") because the serial wasn't fetched yet at
+    flow time.  A later zeroconf rediscovery of that same physical speaker
+    now computes a serial-based unique_id, so
+    _abort_if_unique_id_configured no longer recognizes the device as
+    already configured and a duplicate entry gets created — its entities
+    then collide with the original entry's (same device_name, same
+    unique_id suffix). Migrating the entry's unique_id to the serial closes
+    that gap for future rediscoveries.
+    """
+    if not coordinator.device_serial or entry.unique_id == coordinator.device_serial:
+        return
+    existing = hass.config_entries.async_entry_for_domain_unique_id(
+        DOMAIN, coordinator.device_serial
+    )
+    if existing and existing.entry_id != entry.entry_id:
+        LOGGER.warning(
+            "Entry %s (%s) was not migrated to unique_id %s: entry %s already "
+            "uses it. This usually means a duplicate entry exists for the same "
+            "speaker — remove one of them in Settings > Devices & Services.",
+            entry.entry_id,
+            coordinator.device_description,
+            coordinator.device_serial,
+            existing.entry_id,
+        )
+        return
+    old_unique_id = entry.unique_id
+    hass.config_entries.async_update_entry(entry, unique_id=coordinator.device_serial)
+    LOGGER.debug(
+        "Migrated entry %s unique_id from %s to serial %s",
+        entry.entry_id,
+        old_unique_id,
+        coordinator.device_serial,
+    )
 
 
 async def _async_reload_entry(

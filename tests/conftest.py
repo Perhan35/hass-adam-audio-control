@@ -12,11 +12,10 @@ from custom_components.adam_audio.client import AdamAudioState
 from custom_components.adam_audio.const import (
     CONF_DESCRIPTION,
     CONF_DEVICE_NAME,
-    CONF_HOST,
-    CONF_PORT,
     CONF_SERIAL,
     DOMAIN,
 )
+from homeassistant.const import CONF_HOST, CONF_PORT
 
 MOCK_HOST = "192.168.1.100"
 MOCK_PORT = 49494
@@ -30,16 +29,6 @@ def auto_enable_custom_integrations(
     enable_custom_integrations: None,
 ) -> None:
     """Enable custom integrations for all tests."""
-
-
-@pytest.fixture(autouse=True)
-def clear_state_leakage() -> None:
-    """Clear global state to prevent leakage across tests.
-
-    Note: With state moved to hass.data[DOMAIN], the fresh 'hass' fixture
-    provided by pytest-homeassistant-custom-component already handles
-    most resets. This fixture is kept for future-proofing.
-    """
 
 
 @pytest.fixture

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyadamaudiocontroller"
-version = "1.0.0"
+version = "1.1.0"
 description = "AES70/OCA protocol library for ADAM Audio A-Series studio monitors"
 readme = "../README.md"
 license = "MIT"
