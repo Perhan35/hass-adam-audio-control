@@ -138,7 +138,7 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
         self._desc = desc
         self._attr_translation_key = desc.translation_key
         self._attr_unique_id = (
-            f"{DOMAIN}_{coordinator.device_unique_id}_{desc.translation_key}"
+            f"{DOMAIN}_{coordinator.entity_unique_id_base}_{desc.translation_key}"
         )
         self._attr_native_min_value = desc.native_min
         self._attr_native_max_value = desc.native_max

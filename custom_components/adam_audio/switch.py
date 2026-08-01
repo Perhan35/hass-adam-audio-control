@@ -60,7 +60,9 @@ class AdamAudioMuteSwitch(AdamAudioEntity, SwitchEntity):
     def __init__(self, coordinator: AdamAudioCoordinator) -> None:
         """Initialize the mute switch."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{ENTITY_MUTE}"
+        self._attr_unique_id = (
+            f"{DOMAIN}_{coordinator.entity_unique_id_base}_{ENTITY_MUTE}"
+        )
 
     @property
     def is_on(self) -> bool:
@@ -86,7 +88,9 @@ class AdamAudioSleepSwitch(AdamAudioEntity, SwitchEntity):
     def __init__(self, coordinator: AdamAudioCoordinator) -> None:
         """Initialize the sleep switch."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{ENTITY_SLEEP}"
+        self._attr_unique_id = (
+            f"{DOMAIN}_{coordinator.entity_unique_id_base}_{ENTITY_SLEEP}"
+        )
 
     @property
     def is_on(self) -> bool:

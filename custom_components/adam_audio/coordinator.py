@@ -153,6 +153,18 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
     # ── Device info (shared by all child entities) ────────────────────────────
 
     @property
+    def entity_unique_id_base(self) -> str:
+        """Return the value entities should use to build their unique_id.
+
+        Prefers the device serial, which is globally unique, over the
+        hardware name (``device_unique_id``), which is not guaranteed to be
+        unique across speakers and is only kept around to look up
+        registry entries created before the serial was known (see
+        ``_async_migrate_device_identifiers``).
+        """
+        return self.device_serial or self.device_unique_id
+
+    @property
     def device_info(self) -> DeviceInfo:
         """Return device info for the device registry.
 
@@ -161,7 +173,7 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
         name-based identifier are migrated in async_setup_entry.
         """
         return DeviceInfo(
-            identifiers={(DOMAIN, self.device_serial or self.device_unique_id)},
+            identifiers={(DOMAIN, self.entity_unique_id_base)},
             name=self.device_description,
             manufacturer=MANUFACTURER,
             model="A-Series",

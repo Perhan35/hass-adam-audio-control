@@ -78,6 +78,29 @@ def generate_core_manifest(lib_version: str) -> dict:
     return {"domain": manifest["domain"], "name": manifest["name"], **rest}
 
 
+def dump_core_manifest(manifest: dict) -> str:
+    """Serialize a manifest the way HA Core's own manifests are formatted.
+
+    Plain `json.dumps(..., indent=2)` always breaks lists onto their own
+    lines, but Core's convention keeps lists of primitives (codeowners,
+    loggers, requirements, ...) on a single line and only expands lists
+    that contain objects (e.g. zeroconf).
+    """
+    lines = ["{"]
+    items = list(manifest.items())
+    for i, (key, value) in enumerate(items):
+        comma = "," if i < len(items) - 1 else ""
+        if isinstance(value, list) and all(
+            not isinstance(v, (dict, list)) for v in value
+        ):
+            value_str = json.dumps(value)
+        else:
+            value_str = json.dumps(value, indent=2).replace("\n", "\n  ")
+        lines.append(f"  {json.dumps(key)}: {value_str}{comma}")
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
 def generate_core_init() -> str:
     """Generate __init__.py with card registration stripped."""
     result = (INTEGRATION_SRC / "__init__.py").read_text()
@@ -353,9 +376,7 @@ def main() -> None:
 
     # 1. Generate manifest.json
     manifest = generate_core_manifest(args.lib_version)
-    (integration_out / "manifest.json").write_text(
-        json.dumps(manifest, indent=2) + "\n"
-    )
+    (integration_out / "manifest.json").write_text(dump_core_manifest(manifest))
     print("  Generated: manifest.json")
 
     # 2. Generate __init__.py (stripped of card logic)

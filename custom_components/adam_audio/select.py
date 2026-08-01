@@ -69,7 +69,9 @@ class AdamAudioInputSelect(AdamAudioEntity, SelectEntity):
     def __init__(self, coordinator: AdamAudioCoordinator) -> None:
         """Initialize the input select."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.device_unique_id}_{ENTITY_INPUT}"
+        self._attr_unique_id = (
+            f"{DOMAIN}_{coordinator.entity_unique_id_base}_{ENTITY_INPUT}"
+        )
 
     @property
     def current_option(self) -> str:
@@ -92,7 +94,7 @@ class AdamAudioVoicingSelect(AdamAudioEntity, SelectEntity):
         """Initialize the voicing select."""
         super().__init__(coordinator)
         self._attr_unique_id = (
-            f"{DOMAIN}_{coordinator.device_unique_id}_{ENTITY_VOICING}"
+            f"{DOMAIN}_{coordinator.entity_unique_id_base}_{ENTITY_VOICING}"
         )
 
     @property
