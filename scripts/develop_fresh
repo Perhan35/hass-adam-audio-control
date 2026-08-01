@@ -109,4 +109,14 @@ if [[ "$RESET_ONLY" -eq 1 ]]; then
     exit 0
 fi
 
+# HA's zeroconf browser asks for 100+ service types in one batched, compressed
+# query, which the ADAM Audio speakers' embedded mDNS responder doesn't
+# reliably answer — but it does answer a clean, single-type query within about
+# a second. Run that dedicated query alongside HA's own startup so its
+# passively-listening socket picks up the response immediately instead of
+# waiting on a lucky compound-query hit (which can take several minutes).
+python3 scripts/nudge_zeroconf.py &
+NUDGE_PID=$!
+trap 'kill "$NUDGE_PID" 2>/dev/null' EXIT
+
 hass --config "$CONFIG_DIR" --debug
