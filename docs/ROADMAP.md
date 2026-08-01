@@ -4,9 +4,9 @@ Planned work after the integration lands in Home Assistant Core
 ([core#166511](https://github.com/home-assistant/core/pull/166511),
 [home-assistant.io#44305](https://github.com/home-assistant/home-assistant.io/pull/44305)).
 
-The integration ships at **bronze** on the
-[Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/).
-Silver is already fully met. The two sections below are what Gold and Platinum still require, as
+The integration ships at **Silver** on the
+[Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/)
+as requirements are already fully met. The two sections below are what Gold and Platinum still require, as
 tracked in [`quality_scale.yaml`](../quality_scale.yaml).
 
 These are deliberately kept out of the initial Core submission: reviewers prefer a new integration
