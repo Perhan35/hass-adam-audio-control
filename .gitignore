@@ -37,4 +37,5 @@ Thumbs.db
 homeassistant/
 *.log
 config/
+config_fresh/
 .claude/

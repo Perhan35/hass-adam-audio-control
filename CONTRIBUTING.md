@@ -71,7 +71,8 @@ To set up a local development environment:
 
 | Script | Description |
 |---|---|
-| `scripts/develop` | Start Home Assistant with the integration loaded |
+| `scripts/develop` | Start Home Assistant with the integration loaded (`config/`, port 8123) |
+| `scripts/develop_fresh` | Start a throwaway Home Assistant on port 8456 — wipes `config_fresh/` on every launch (login `dev`/`dev`); `-u` upgrades dependencies first |
 | `scripts/lint` | Format and lint with [ruff](https://github.com/astral-sh/ruff) |
 | `scripts/checks` | Run all checks (lint + tests + coverage) |
 | `scripts/browse_mdns` | Debug mDNS / zeroconf discovery |
