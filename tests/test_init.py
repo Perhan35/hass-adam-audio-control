@@ -391,6 +391,7 @@ async def test_no_unique_id_migration_without_serial(
 async def test_migrates_stale_hardware_name_entity_unique_ids(
     hass: HomeAssistant,
     mock_client: MagicMock,
+    entity_registry: er.EntityRegistry,
 ) -> None:
     """Test entities are renamed from the hardware-name unique_id to the serial.
 
@@ -416,7 +417,6 @@ async def test_migrates_stale_hardware_name_entity_unique_ids(
     )
     entry.add_to_hass(hass)
 
-    entity_registry = er.async_get(hass)
     stale_unique_id = f"{DOMAIN}_{MOCK_DEVICE_NAME}_{ENTITY_MUTE}"
     reg_entry = entity_registry.async_get_or_create(
         Platform.SWITCH,
@@ -444,6 +444,7 @@ async def test_migrates_stale_hardware_name_entity_unique_ids(
 async def test_entity_unique_id_migration_skips_existing_target(
     hass: HomeAssistant,
     mock_client: MagicMock,
+    entity_registry: er.EntityRegistry,
 ) -> None:
     """Test the entity migration refuses to collide with an existing entity.
 
@@ -467,7 +468,6 @@ async def test_entity_unique_id_migration_skips_existing_target(
     )
     entry.add_to_hass(hass)
 
-    entity_registry = er.async_get(hass)
     stale_unique_id = f"{DOMAIN}_{MOCK_DEVICE_NAME}_{ENTITY_MUTE}"
     target_unique_id = f"{DOMAIN}_{MOCK_SERIAL}_{ENTITY_MUTE}"
     stale_entry = entity_registry.async_get_or_create(
