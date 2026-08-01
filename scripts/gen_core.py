@@ -71,7 +71,7 @@ def generate_core_manifest(lib_version: str) -> dict:
     manifest["documentation"] = "https://www.home-assistant.io/integrations/adam_audio"
     manifest["requirements"] = [f"pyadamaudiocontroller=={lib_version}"]
     manifest["loggers"] = ["pyadamaudiocontroller"]
-    manifest["quality_scale"] = "bronze"
+    manifest["quality_scale"] = "silver"
 
     # HA Core requires: domain first, name second, then alphabetical order
     rest = {k: v for k, v in sorted(manifest.items()) if k not in ("domain", "name")}
