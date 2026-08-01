@@ -37,17 +37,21 @@ def commit_subjects(commit_range: str) -> list[str]:
 def build_notes(current_tag: str, prev_tag: str | None, repo: str) -> str:
     commit_range = f"{prev_tag}..{current_tag}" if prev_tag else current_tag
     buckets: dict[str, list[str]] = {name: [] for name, _ in CATEGORIES.values()}
+    other: list[str] = []
 
     for subject in commit_subjects(commit_range):
         match = COMMIT_RE.match(subject)
         if not match:
+            other.append(subject[0].upper() + subject[1:] if subject else subject)
             continue
         category = CATEGORIES.get(match.group("type").lower())
+        desc = match.group("desc").strip()
+        entry = desc[0].upper() + desc[1:] if desc else desc
         if not category:
+            other.append(entry)
             continue
         name, _ = category
-        desc = match.group("desc").strip()
-        buckets[name].append(desc[0].upper() + desc[1:] if desc else desc)
+        buckets[name].append(entry)
 
     sections = []
     for name, emoji in dict.fromkeys(CATEGORIES.values()):
@@ -56,6 +60,10 @@ def build_notes(current_tag: str, prev_tag: str | None, repo: str) -> str:
             continue
         lines = "\n".join(f"- {entry}" for entry in entries)
         sections.append(f"### {emoji} {name}\n\n{lines}")
+
+    if other:
+        lines = "\n".join(f"- {entry}" for entry in other)
+        sections.append(f"### Other noteworthy changes:\n\n{lines}")
 
     body = "## What's Changed\n\n" + "\n\n".join(sections) if sections else "## What's Changed"
     if prev_tag:
