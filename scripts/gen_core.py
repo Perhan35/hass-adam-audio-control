@@ -115,7 +115,10 @@ def generate_core_init() -> str:
         r"(?:\n(?:    .*\n|\n)*)",
         "async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:\n"
         '    """Set up the ADAM Audio integration."""\n'
+        "    # Tracks group entities across ALL config entries (one per speaker), so it\n"
+        "    # can't live on a single entry's runtime_data.\n"
         "    if DOMAIN not in hass.data:\n"
+        "        # pylint: disable-next=home-assistant-use-runtime-data\n"
         "        hass.data[DOMAIN] = AdamAudioIntegrationData(coordinators={})\n"
         "    return True\n\n\n",
         result,
@@ -178,6 +181,67 @@ def _transform_test_content(filename: str, content: str) -> str:
     return content
 
 
+def _ruff_fix_and_format(files: list[Path], output_dir: Path) -> None:
+    """Fix import ordering (I001) and format a set of generated files with ruff.
+
+    Prefers running from the ha-core root (detected via symlink) so ruff picks
+    up the correct pyproject.toml (isort.known_first_party, banned-api rules,
+    line length, etc.) rather than any config local to this repo.
+    """
+    # Determine the working directory: if the output_dir is a symlink, resolve
+    # to find the ha-core root (three levels up from homeassistant/components/adam_audio
+    # or tests/components/adam_audio).
+    cwd: Path | None = None
+    if output_dir.is_symlink():
+        resolved = output_dir.resolve()
+        cwd = resolved.parent.parent.parent
+    elif (output_dir.parent.parent.parent / "pyproject.toml").exists():
+        cwd = output_dir.parent.parent.parent
+
+    ruff_cmd_base = ["python", "-m", "ruff"]
+
+    try:
+        # Use paths relative to ha-core root so ruff applies isort settings correctly
+        rel_files = []
+        for p in files:
+            resolved = p.resolve()
+            if cwd and resolved.is_relative_to(cwd):
+                rel_files.append(str(resolved.relative_to(cwd)))
+            else:
+                rel_files.append(str(p))
+
+        # 1. Check and fix imports (isort)
+        check_result = subprocess.run(  # noqa: S603
+            [*ruff_cmd_base, "check", "--select", "I001", "--fix", "--quiet", *rel_files],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        # 2. Format code
+        format_result = subprocess.run(  # noqa: S603
+            [*ruff_cmd_base, "format", "--quiet", *rel_files],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if check_result.returncode != 0 or format_result.returncode != 0:
+            print("  Warning: ruff execution failed.")
+            if check_result.returncode != 0:
+                print(f"    ruff check: {check_result.stderr.strip()}")
+            if format_result.returncode != 0:
+                print(f"    ruff format: {format_result.stderr.strip()}")
+        else:
+            print("  Sorted imports and formatted code (ruff)")
+    except FileNotFoundError:
+        print(
+            "  Warning: ruff not found — formatting may need manual fixing.\n"
+            f"  Run: python -m ruff check --select I001 --fix {output_dir}\n"
+            f"  Run: python -m ruff format {output_dir}"
+        )
+
+
 def generate_core_tests(output_dir: Path) -> None:
     """Copy and adapt test files for Core's test structure."""
     written: list[Path] = []
@@ -198,60 +262,7 @@ def generate_core_tests(output_dir: Path) -> None:
     init = output_dir / "__init__.py"
     init.write_text('"""Tests for the ADAM Audio integration."""\n')
 
-    # Fix import ordering in every generated test file using ruff (I001).
-    # Prefer running from the ha-core root (detected via symlink) so ruff picks up
-    # the correct pyproject.toml with isort.known_first_party = ["homeassistant", "tests"].
-    all_files = [*written, init]
-
-    # Determine the working directory: if the output_dir is a symlink, resolve
-    # to find the ha-core root (two levels up from tests/components/adam_audio).
-    cwd: Path | None = None
-    if output_dir.is_symlink():
-        resolved = output_dir.resolve()
-        # resolved = <ha-core>/tests/components/adam_audio → go up 3 levels
-        cwd = resolved.parent.parent.parent
-    elif (output_dir.parent.parent.parent / "pyproject.toml").exists():
-        cwd = output_dir.parent.parent.parent
-
-    ruff_cmd_base = [
-        "python",
-        "-m",
-        "ruff",
-    ]
-
-    try:
-        # 1. Check and fix imports (isort)
-        # Use paths relative to ha-core root so ruff applies isort settings correctly
-        rel_files = []
-        for p in all_files:
-            resolved = p.resolve()
-            if cwd and resolved.is_relative_to(cwd):
-                rel_files.append(str(resolved.relative_to(cwd)))
-            else:
-                rel_files.append(str(p))
-
-        subprocess.run(  # noqa: S603
-            [*ruff_cmd_base, "check", "--select", "I001", "--fix", "--quiet", *rel_files],
-            cwd=cwd,
-            check=False,
-            capture_output=True,
-        )
-        # 2. Format code
-        subprocess.run(  # noqa: S603
-            [*ruff_cmd_base, "format", "--quiet", *rel_files],
-            cwd=cwd,
-            check=False,
-            capture_output=True,
-        )
-        print("  Sorted imports and formatted code (ruff)")
-    except subprocess.CalledProcessError:
-        print("  Warning: ruff execution failed.")
-    except FileNotFoundError:
-        print(
-            "  Warning: ruff not found — formatting may need manual fixing.\n"
-            f"  Run: python -m ruff check --select I001 --fix {output_dir}\n"
-            f"  Run: python -m ruff format {output_dir}"
-        )
+    _ruff_fix_and_format([*written, init], output_dir)
 
 
 def create_symlinks(output: Path, ha_core: Path) -> None:
@@ -397,6 +408,10 @@ def main() -> None:
         if src.exists():
             shutil.copytree(src, integration_out / dirname, dirs_exist_ok=True)
             print(f"  Copied: {dirname}/")
+
+    # 4b. Normalize the generated __init__.py (blank lines left by the
+    # card-registration removal) so it matches ha-core's formatting exactly.
+    _ruff_fix_and_format([integration_out / "__init__.py"], integration_out)
 
     # 5. Copy quality_scale.yaml if it exists
     quality_scale = ROOT / "quality_scale.yaml"

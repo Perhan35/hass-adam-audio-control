@@ -3,14 +3,15 @@
 EQ controls (Bass, Desk, Presence, Treble) use integer dB steps.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import override
 
 from homeassistant.components.number import NumberEntity, NumberMode
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from . import get_integration_data
 from .client import AdamAudioState
 from .const import (
     BASS_MAX,
@@ -31,14 +32,10 @@ from .const import (
     TREBLE_MIN,
 )
 from .coordinator import AdamAudioCoordinator
+from .data import AdamAudioConfigEntry
 from .entity import AdamAudioEntity, AdamAudioGroupEntity
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-
-    from .data import AdamAudioConfigEntry, AdamAudioIntegrationData
-
+PARALLEL_UPDATES = 0
 
 # ── Entity descriptors ────────────────────────────────────────────────────────
 
@@ -110,7 +107,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up the number platform."""
     coordinator = entry.runtime_data.coordinator
-    integration_data: AdamAudioIntegrationData = hass.data[DOMAIN]
+    integration_data = get_integration_data(hass)
 
     entities: list[NumberEntity] = [
         AdamAudioNumber(coordinator, desc) for desc in _NUMBER_DESCRIPTORS
@@ -138,6 +135,7 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
         self._desc = desc
         self._attr_translation_key = desc.translation_key
         self._attr_unique_id = (
+            # pylint: disable-next=home-assistant-entity-unique-id-redundant-domain
             f"{DOMAIN}_{coordinator.entity_unique_id_base}_{desc.translation_key}"
         )
         self._attr_native_min_value = desc.native_min
@@ -146,6 +144,7 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
         self._attr_native_unit_of_measurement = desc.native_unit
 
     @property
+    @override
     def available(self) -> bool:
         """Return true if the entity is available and the voicing is valid."""
         if not super().available:
@@ -155,10 +154,12 @@ class AdamAudioNumber(AdamAudioEntity, NumberEntity):
         return True
 
     @property
+    @override
     def native_value(self) -> float:
         """Return the current value."""
         return self._desc.state_getter(self.coordinator.client.state)
 
+    @override
     async def async_set_native_value(self, value: float) -> None:
         """Set the value on the device."""
         setter = getattr(self.coordinator.client, self._desc.setter_name)
@@ -182,6 +183,7 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
         super().__init__(hass)
         self._desc = desc
         self._attr_translation_key = desc.translation_key
+        # pylint: disable-next=home-assistant-entity-unique-id-redundant-domain
         self._attr_unique_id = f"{DOMAIN}_{GROUP_DEVICE_ID}_{desc.translation_key}"
         self._attr_native_min_value = desc.native_min
         self._attr_native_max_value = desc.native_max
@@ -189,6 +191,7 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
         self._attr_native_unit_of_measurement = desc.native_unit
 
     @property
+    @override
     def available(self) -> bool:
         """Return true if at least one speaker supports the voicing."""
         if not super().available:
@@ -201,6 +204,7 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
         return True
 
     @property
+    @override
     def native_value(self) -> float:
         """Return the average across all speakers."""
         coordinators = self._coordinators()
@@ -209,6 +213,7 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
         values = [self._desc.state_getter(c.client.state) for c in coordinators]
         return round(sum(values) / len(values), 1)
 
+    @override
     async def async_set_native_value(self, value: float) -> None:
         """Set the value on all speakers."""
         if self._desc.native_step == 1.0:

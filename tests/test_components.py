@@ -447,19 +447,22 @@ async def test_group_entity_no_resubscribe_after_removal(hass: HomeAssistant) ->
 async def test_group_entity_write_ha_state_noop_after_removal(
     hass: HomeAssistant,
 ) -> None:
-    """async_write_ha_state() must skip re-subscription once removed.
+    """_async_write_ha_state() must skip re-subscription once removed.
 
     Uses a coordinator count that deliberately mismatches _subscribed_count
-    (0, after removal) to prove the resubscribe path is never entered.
+    (0, after removal) to prove the resubscribe path is never entered. Calls
+    _async_write_ha_state() directly (the actual override point) rather than
+    the public async_write_ha_state(), which requires the entity to be fully
+    attached to a platform before it can be called.
     """
     entity = AdamAudioGroupEntity(hass)
     await entity.async_will_remove_from_hass()
 
     with (
         patch.object(entity, "_coordinators", return_value=[MagicMock(), MagicMock()]),
-        patch.object(Entity, "async_write_ha_state") as mock_super_write,
+        patch.object(Entity, "_async_write_ha_state") as mock_super_write,
     ):
-        entity.async_write_ha_state()
+        entity._async_write_ha_state()
 
     mock_super_write.assert_not_called()
 
@@ -467,11 +470,12 @@ async def test_group_entity_write_ha_state_noop_after_removal(
 async def test_group_entity_survives_double_unsub_after_removal(
     hass: HomeAssistant,
 ) -> None:
-    """Directly reproduces the KeyError: an unsub() that raises if invoked a
-    second time (mirroring DataUpdateCoordinator's real behavior) must only
-    ever be called once, even when async_write_ha_state() is invoked again
-    for a coordinator-count that mismatches the (now-zeroed) subscribed
-    count.
+    """Directly reproduces the KeyError.
+
+    An unsub() that raises if invoked a second time (mirroring
+    DataUpdateCoordinator's real behavior) must only ever be called once,
+    even when async_write_ha_state() is invoked again for a
+    coordinator-count that mismatches the (now-zeroed) subscribed count.
     """
     entity = AdamAudioGroupEntity(hass)
 
@@ -493,7 +497,7 @@ async def test_group_entity_survives_double_unsub_after_removal(
     # A suspended _async_call_all resumes and calls async_write_ha_state()
     # after removal; this must not attempt to unsub again.
     with patch.object(entity, "_coordinators", return_value=[MagicMock(), MagicMock()]):
-        entity.async_write_ha_state()
+        entity._async_write_ha_state()
 
     assert calls == 1
 
@@ -502,9 +506,11 @@ async def test_group_entity_survives_double_unsub_after_removal(
 async def test_group_switch_removed_mid_command_no_keyerror(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
 ) -> None:
-    """End-to-end repro: removing the group switch while a command is still
-    in flight (simulating a config entry reload racing a service call) must
-    not raise, and the service call must complete cleanly.
+    """End-to-end repro.
+
+    Removing the group switch while a command is still in flight (simulating
+    a config entry reload racing a service call) must not raise, and the
+    service call must complete cleanly.
     """
     mock_config_entry.add_to_hass(hass)
     with patch(

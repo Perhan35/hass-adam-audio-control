@@ -15,13 +15,11 @@ unavailable until the next successful poll. A single dropped poll on its
 own is tolerated and does not affect entity availability.
 """
 
-from __future__ import annotations
-
 from dataclasses import replace
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_DESCRIPTION, CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -29,7 +27,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .client import AdamAudioClient, AdamAudioState
 from .const import (
-    CONF_DESCRIPTION,
     CONF_DEVICE_NAME,
     CONF_SERIAL,
     DOMAIN,
@@ -113,6 +110,7 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
         # values from the moment they appear in HA.
         await self.async_config_entry_first_refresh()
 
+    @override
     async def async_shutdown(self) -> None:
         """Release resources when the config entry is unloaded.
 
@@ -126,6 +124,7 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
 
     # ── Coordinator update callback ───────────────────────────────────────────
 
+    @override
     async def _async_update_data(self) -> AdamAudioState:
         """Fetch current device state.
 

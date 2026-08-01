@@ -9,13 +9,8 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.adam_audio.client import AdamAudioState
-from custom_components.adam_audio.const import (
-    CONF_DESCRIPTION,
-    CONF_DEVICE_NAME,
-    CONF_SERIAL,
-    DOMAIN,
-)
-from homeassistant.const import CONF_HOST, CONF_PORT
+from custom_components.adam_audio.const import CONF_DEVICE_NAME, CONF_SERIAL, DOMAIN
+from homeassistant.const import CONF_DESCRIPTION, CONF_HOST, CONF_PORT
 
 MOCK_HOST = "192.168.1.100"
 MOCK_PORT = 49494

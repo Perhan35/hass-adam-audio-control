@@ -7,14 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.adam_audio import _async_reload_entry, async_setup
-from custom_components.adam_audio.const import (
-    CONF_DESCRIPTION,
-    CONF_DEVICE_NAME,
-    CONF_SERIAL,
-    DOMAIN,
-)
+from custom_components.adam_audio.const import CONF_DEVICE_NAME, CONF_SERIAL, DOMAIN
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_DESCRIPTION, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 
 from .conftest import (
@@ -362,8 +357,9 @@ async def test_coordinator_update_failure(
 async def test_coordinator_survives_single_failed_poll(
     hass: HomeAssistant, mock_config_entry, mock_client: MagicMock
 ) -> None:
-    """A single failed poll within the client's debounce window must not
-    mark the coordinator's data as stale/failed, so entities stay available.
+    """Test a single failed poll does not mark the coordinator's data stale.
+
+    Within the client's debounce window, entities must stay available.
     """
     mock_config_entry.add_to_hass(hass)
 

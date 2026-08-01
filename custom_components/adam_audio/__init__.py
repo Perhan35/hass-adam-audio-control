@@ -9,24 +9,17 @@ child entities.  A virtual 'All Speakers' group device is automatically
 created to control all speakers simultaneously.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, LOGGER
 from .coordinator import AdamAudioCoordinator
-from .data import AdamAudioData, AdamAudioIntegrationData
-
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.typing import ConfigType
-
-    from .data import AdamAudioConfigEntry
+from .data import AdamAudioConfigEntry, AdamAudioData, AdamAudioIntegrationData
 
 _WWW_DIR = Path(__file__).parent / "www"
 
@@ -76,8 +69,20 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     return True
 
 
+def get_integration_data(hass: HomeAssistant) -> AdamAudioIntegrationData:
+    """Return this integration's cross-entry state.
+
+    Tracks group entities across ALL config entries (one per speaker), so it
+    can't live on a single entry's runtime_data. Only valid once
+    async_setup_entry has run for at least one entry.
+    """
+    # pylint: disable-next=home-assistant-use-runtime-data
+    return hass.data[DOMAIN]
+
+
 def get_coordinators(hass: HomeAssistant) -> list[AdamAudioCoordinator]:
     """Return all currently loaded ADAM Audio coordinators."""
+    # pylint: disable-next=home-assistant-use-runtime-data
     data: AdamAudioIntegrationData | None = hass.data.get(DOMAIN)
     if not data:
         return []
@@ -101,7 +106,9 @@ async def async_setup_entry(
         coordinator=coordinator,
     )
 
-    # Ensure integration-wide state exists (especially for tests)
+    # Ensure integration-wide state exists (especially for tests). Tracks group
+    # entities across ALL config entries, so it can't live on runtime_data.
+    # pylint: disable-next=home-assistant-use-runtime-data
     integration_data = hass.data.setdefault(
         DOMAIN, AdamAudioIntegrationData(coordinators={})
     )
@@ -207,7 +214,7 @@ def _async_migrate_entry_unique_id(
         LOGGER.warning(
             "Entry %s (%s) was not migrated to unique_id %s: entry %s already "
             "uses it. This usually means a duplicate entry exists for the same "
-            "speaker — remove one of them in Settings > Devices & Services.",
+            "speaker — remove one of them in Settings > Devices & Services",
             entry.entry_id,
             coordinator.device_description,
             coordinator.device_serial,
