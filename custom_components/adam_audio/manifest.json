@@ -1,6 +1,7 @@
 {
   "domain": "adam_audio",
   "name": "ADAM Audio",
+  "categories": ["media_entertainment.speakers_audio"],
   "codeowners": ["@Perhan35"],
   "config_flow": true,
   "dependencies": [
@@ -13,7 +14,7 @@
   "issue_tracker": "https://github.com/Perhan35/hass-adam-audio-control/issues",
   "loggers": ["pyadamaudiocontroller"],
   "requirements": ["pyadamaudiocontroller>=1.1.0"],
-  "version": "0.4.0",
+  "version": "0.5.0",
   "zeroconf": [
     {
       "name": "aseries*",
