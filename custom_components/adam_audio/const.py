@@ -30,6 +30,7 @@ ENTITY_TREBLE = "treble"
 # ── Group ────────────────────────────────────────────────────────────────────
 GROUP_DEVICE_ID = "group_all_speakers"
 GROUP_DEVICE_NAME = "All Speakers"
+SIGNAL_COORDINATORS_CHANGED = "adam_audio_coordinators_changed"
 
 # ── Voicing ──────────────────────────────────────────────────────────────────
 VOICING_OPTIONS = ["Pure", "UNR", "Ext"]

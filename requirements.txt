@@ -2,7 +2,7 @@
 -e lib/
 
 # Home Assistant core
-homeassistant>=2026.3.0
+homeassistant>=2026.8.0
 
 # Dev tools
 pytest-homeassistant-custom-component

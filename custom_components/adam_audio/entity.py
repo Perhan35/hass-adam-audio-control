@@ -13,11 +13,18 @@ from typing import Any, override
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import get_coordinators
-from .const import DOMAIN, GROUP_DEVICE_ID, GROUP_DEVICE_NAME, MANUFACTURER
+from .const import (
+    DOMAIN,
+    GROUP_DEVICE_ID,
+    GROUP_DEVICE_NAME,
+    MANUFACTURER,
+    SIGNAL_COORDINATORS_CHANGED,
+)
 from .coordinator import AdamAudioCoordinator
 
 
@@ -52,7 +59,6 @@ class AdamAudioGroupEntity(Entity):
         """Initialize the group entity."""
         self._hass = hass
         self._unsub_listeners: list = []
-        self._subscribed_count: int = 0
         self._removed = False
 
     # ── Device info ──────────────────────────────────────────────────────────
@@ -70,14 +76,18 @@ class AdamAudioGroupEntity(Entity):
 
     # ── Coordinator helpers ──────────────────────────────────────────────────
 
-    def _coordinators(self) -> list[AdamAudioCoordinator]:
+    def _all_coordinators(self) -> list[AdamAudioCoordinator]:
         """Return all currently loaded device coordinators."""
         return get_coordinators(self._hass)
 
-    async def _async_call_all(self, method_name: str, *args: Any) -> None:
-        """Run a client command on every speaker, then refresh all entities.
+    def _coordinators(self) -> list[AdamAudioCoordinator]:
+        """Return the speakers that are online: state and commands use only these."""
+        return [c for c in self._all_coordinators() if c.client.available]
 
-        All speakers are commanded concurrently.  The speakers that did apply
+    async def _async_call_all(self, method_name: str, *args: Any) -> None:
+        """Run a client command on every online speaker, then refresh all entities.
+
+        Speakers are commanded concurrently.  The speakers that did apply
         the change are refreshed so the UI reflects them; a HomeAssistantError
         is then raised to surface the failure(s) to the user.
 
@@ -94,7 +104,8 @@ class AdamAudioGroupEntity(Entity):
         for coordinator, result in zip(coordinators, results, strict=True):
             if not isinstance(result, Exception):
                 coordinator.async_notify_state()
-        self.async_write_ha_state()
+        if not self._removed:
+            self.async_write_ha_state()
 
         failures = [result for result in results if isinstance(result, Exception)]
         if failures:
@@ -107,14 +118,17 @@ class AdamAudioGroupEntity(Entity):
 
     @override
     async def async_added_to_hass(self) -> None:
-        """Subscribe to all coordinators so the group state stays live."""
+        """Follow every coordinator, including ones loaded or reloaded later."""
         self._removed = False
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass, SIGNAL_COORDINATORS_CHANGED, self._on_coordinators_changed
+            )
+        )
         self._subscribe_coordinators()
 
     def _subscribe_coordinators(self) -> None:
-        """(Re-)subscribe to update events from every known coordinator."""
-        if self._removed:
-            return
+        """Listen to the coordinators that are loaded right now."""
         for unsub in self._unsub_listeners:
             unsub()
         self._unsub_listeners.clear()
@@ -123,40 +137,35 @@ class AdamAudioGroupEntity(Entity):
         def _on_coordinator_update() -> None:
             self.async_write_ha_state()
 
-        for coordinator in self._coordinators():
+        for coordinator in self._all_coordinators():
             self._unsub_listeners.append(
                 coordinator.async_add_listener(_on_coordinator_update)
             )
-        self._subscribed_count = len(self._unsub_listeners)
+
+    @callback
+    def _on_coordinators_changed(self) -> None:
+        """A speaker was loaded or unloaded."""
+        if self._removed:
+            return
+        self._subscribe_coordinators()
+        self.async_write_ha_state()
 
     @callback
     @override
-    def _async_write_ha_state(self) -> None:
-        """Re-subscribe if new coordinators were added since last subscription."""
-        if self._removed:
-            return
-        current_count = len(self._coordinators())
-        if current_count != self._subscribed_count:
-            self._subscribe_coordinators()
-        super()._async_write_ha_state()
+    def async_entity_id_changed(self, old_entity_id: str) -> None:
+        """Nothing here is keyed on entity_id: opt in to the in-place rename."""
+        super().async_entity_id_changed(old_entity_id)
 
     @override
     async def async_will_remove_from_hass(self) -> None:
-        """Clean up coordinator listeners.
-
-        Marks the entity removed first so any in-flight _async_call_all (e.g.
-        awaiting asyncio.gather when a reload tears this entity down) that
-        later calls async_write_ha_state() won't try to re-subscribe and
-        double-unsub listeners we're about to remove here.
-        """
+        """Clean up coordinator listeners."""
         self._removed = True
         for unsub in self._unsub_listeners:
             unsub()
         self._unsub_listeners.clear()
-        self._subscribed_count = 0
 
     @property
     @override
     def available(self) -> bool:
         """Group is available if at least one device is online."""
-        return any(c.client.available for c in self._coordinators())
+        return bool(self._coordinators())

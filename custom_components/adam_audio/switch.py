@@ -34,11 +34,7 @@ async def async_setup_entry(
         AdamAudioMuteSwitch(coordinator),
     ]
 
-    # Create group entities exactly once; the flags are reset when the owning
-    # entry unloads so a reload recreates them.
-    if not integration_data.group_switches_added:
-        integration_data.group_switches_added = True
-        integration_data.group_owner_entry_id = entry.entry_id
+    if integration_data.group_owner_entry_id == entry.entry_id:
         entities += [
             AdamAudioGroupSleepSwitch(hass),
             AdamAudioGroupMuteSwitch(hass),

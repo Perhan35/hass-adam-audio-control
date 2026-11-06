@@ -44,9 +44,7 @@ async def async_setup_entry(
         AdamAudioInputSelect(coordinator),
     ]
 
-    if not integration_data.group_selects_added:
-        integration_data.group_selects_added = True
-        integration_data.group_owner_entry_id = entry.entry_id
+    if integration_data.group_owner_entry_id == entry.entry_id:
         entities += [
             AdamAudioGroupVoicingSelect(hass),
             AdamAudioGroupInputSelect(hass),

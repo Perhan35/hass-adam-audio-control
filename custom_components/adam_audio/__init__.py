@@ -15,9 +15,16 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_SERIAL, DOMAIN, LOGGER
+from .const import (
+    CONF_SERIAL,
+    DOMAIN,
+    GROUP_DEVICE_ID,
+    LOGGER,
+    SIGNAL_COORDINATORS_CHANGED,
+)
 from .coordinator import AdamAudioCoordinator
 from .data import AdamAudioConfigEntry, AdamAudioData, AdamAudioIntegrationData
 
@@ -98,7 +105,7 @@ async def async_setup_entry(
     coordinator = AdamAudioCoordinator(hass, entry)
     await coordinator.async_setup()  # raises ConfigEntryNotReady if unreachable
 
-    _async_migrate_device_identifiers(hass, coordinator)
+    _async_migrate_device_identifiers(hass, entry, coordinator)
     _async_migrate_entry_unique_id(hass, entry, coordinator)
     _async_migrate_entity_unique_ids(hass, entry, coordinator)
 
@@ -115,7 +122,13 @@ async def async_setup_entry(
     )
     integration_data.coordinators[entry.entry_id] = coordinator
 
+    if integration_data.group_owner_entry_id is None:
+        integration_data.group_owner_entry_id = entry.entry_id
+        _async_adopt_group_device(hass, entry)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    async_dispatcher_send(hass, SIGNAL_COORDINATORS_CHANGED)
 
     # Re-run setup if the entry's options are updated (e.g., host changed).
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
@@ -136,16 +149,14 @@ async def async_unload_entry(
             coordinator = integration_data.coordinators.pop(entry.entry_id, None)
             if coordinator:
                 await coordinator.async_shutdown()
+            async_dispatcher_send(hass, SIGNAL_COORDINATORS_CHANGED)
 
             # The group entities live under the platforms of the entry that
             # created them, so they were just removed along with this entry.
-            # Reset the flags so the next entry setup recreates them (this
+            # Clear the owner so the next entry setup recreates them (this
             # entry reloading, or a remaining entry we schedule below).
             if integration_data.group_owner_entry_id == entry.entry_id:
                 integration_data.group_owner_entry_id = None
-                integration_data.group_switches_added = False
-                integration_data.group_numbers_added = False
-                integration_data.group_selects_added = False
                 if integration_data.coordinators and not hass.is_stopping:
                     hass.config_entries.async_schedule_reload(
                         next(iter(integration_data.coordinators))
@@ -162,8 +173,48 @@ async def async_unload_entry(
     return unload_ok
 
 
+def _async_adopt_group_device(hass: HomeAssistant, entry: AdamAudioConfigEntry) -> None:
+    """Keep one 'All Speakers' device, with the same id, on the owning entry."""
+    device_registry = dr.async_get(hass)
+    entity_registry = er.async_get(hass)
+    devices = [
+        device
+        for other in hass.config_entries.async_entries(DOMAIN)
+        if (
+            device := device_registry.async_get_device_by_identifier(
+                (DOMAIN, GROUP_DEVICE_ID), other.entry_id
+            )
+        )
+    ]
+    if not devices:
+        return
+
+    entities = {
+        device.id: er.async_entries_for_device(
+            entity_registry, device.id, include_disabled_entities=True
+        )
+        for device in devices
+    }
+    keeper = max(devices, key=lambda device: len(entities[device.id]))
+
+    # Home Assistant deletes the entities a device leaves behind on its previous
+    # entry, so they have to follow first.
+    for device_entities in entities.values():
+        for entity in device_entities:
+            entity_registry.async_update_entity(
+                entity.entity_id, config_entry_id=entry.entry_id, device_id=keeper.id
+            )
+    for device in devices:
+        if device.id != keeper.id:
+            device_registry.async_remove_device(device.id)
+    if keeper.config_entry_id != entry.entry_id:
+        device_registry.async_update_device(
+            keeper.id, new_config_entry_id=entry.entry_id
+        )
+
+
 def _async_migrate_device_identifiers(
-    hass: HomeAssistant, coordinator: AdamAudioCoordinator
+    hass: HomeAssistant, entry: AdamAudioConfigEntry, coordinator: AdamAudioCoordinator
 ) -> None:
     """Move a device registered under its hardware name to its serial number.
 
@@ -175,10 +226,10 @@ def _async_migrate_device_identifiers(
         return
     device_registry = dr.async_get(hass)
     new_identifier = (DOMAIN, coordinator.device_serial)
-    if device_registry.async_get_device(identifiers={new_identifier}):
+    if device_registry.async_get_device_by_identifier(new_identifier, entry.entry_id):
         return  # already migrated (or fresh install)
-    old_device = device_registry.async_get_device(
-        identifiers={(DOMAIN, coordinator.device_unique_id)}
+    old_device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, coordinator.device_unique_id), entry.entry_id
     )
     if old_device:
         device_registry.async_update_device(

@@ -30,7 +30,6 @@ from homeassistant.components.select import ATTR_OPTION, SERVICE_SELECT_OPTION
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_OFF, SERVICE_TURN_ON
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import DATA_ENTITY_PLATFORM
 
 
@@ -368,7 +367,7 @@ def test_group_number_available_null_voicings() -> None:
 async def test_group_resubscribes_new_coordinator(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
 ) -> None:
-    """Test group entities re-subscribe when a new coordinator appears."""
+    """Test group commands reach a coordinator that appeared after setup."""
     mock_config_entry.add_to_hass(hass)
     with patch(
         "custom_components.adam_audio.coordinator.AdamAudioClient",
@@ -386,7 +385,6 @@ async def test_group_resubscribes_new_coordinator(
     integration_data: AdamAudioIntegrationData = hass.data[DOMAIN]
     integration_data.coordinators["fake_entry_2"] = mock_coord2
 
-    # Group turn_on triggers async_write_ha_state -> detects count mismatch -> re-subscribes
     await hass.services.async_call(
         SWITCH_DOMAIN,
         SERVICE_TURN_ON,
@@ -402,13 +400,10 @@ async def test_group_resubscribes_new_coordinator(
 # ── Regression tests: KeyError on double-unsub after entity removal ──────────
 #
 # Bug: async_will_remove_from_hass() used to unsub() every coordinator
-# listener without clearing _unsub_listeners/_subscribed_count. If an
-# in-flight _async_call_all() (e.g. a group switch command still awaiting
-# asyncio.gather()) resumed afterwards and called async_write_ha_state(), the
-# stale coordinator-count mismatch made it call _subscribe_coordinators()
-# again, which tried to unsub() the very same listeners a second time.
-# DataUpdateCoordinator.__async_remove_listener_internal() raises KeyError on
-# a listener id that's already been popped, crashing the service call.
+# listener without clearing _unsub_listeners. A later re-subscription then
+# tried to unsub() the very same listeners a second time, and
+# DataUpdateCoordinator.__async_remove_listener_internal() raises KeyError on a
+# listener id that's already been popped, crashing the service call.
 
 
 async def test_group_entity_removal_clears_subscription_state(
@@ -419,52 +414,58 @@ async def test_group_entity_removal_clears_subscription_state(
     unsub1 = MagicMock()
     unsub2 = MagicMock()
     entity._unsub_listeners = [unsub1, unsub2]
-    entity._subscribed_count = 2
 
     await entity.async_will_remove_from_hass()
 
     unsub1.assert_called_once()
     unsub2.assert_called_once()
     assert entity._unsub_listeners == []
-    assert entity._subscribed_count == 0
     assert entity._removed is True
 
 
 async def test_group_entity_no_resubscribe_after_removal(hass: HomeAssistant) -> None:
-    """_subscribe_coordinators() must be a no-op once the entity is removed."""
+    """A coordinator change must be ignored once the entity is removed."""
     entity = AdamAudioGroupEntity(hass)
     await entity.async_will_remove_from_hass()
 
     mock_coord = MagicMock()
     mock_coord.async_add_listener = MagicMock(return_value=lambda: None)
-    with patch.object(entity, "_coordinators", return_value=[mock_coord]):
-        entity._subscribe_coordinators()
+    with (
+        patch.object(entity, "_all_coordinators", return_value=[mock_coord]),
+        patch.object(entity, "async_write_ha_state") as mock_write,
+    ):
+        entity._on_coordinators_changed()
 
     assert entity._unsub_listeners == []
     mock_coord.async_add_listener.assert_not_called()
+    mock_write.assert_not_called()
 
 
-async def test_group_entity_write_ha_state_noop_after_removal(
+async def test_group_entity_command_no_state_write_after_removal(
     hass: HomeAssistant,
 ) -> None:
-    """_async_write_ha_state() must skip re-subscription once removed.
+    """A command resuming after removal must not write state.
 
-    Uses a coordinator count that deliberately mismatches _subscribed_count
-    (0, after removal) to prove the resubscribe path is never entered. Calls
-    _async_write_ha_state() directly (the actual override point) rather than
-    the public async_write_ha_state(), which requires the entity to be fully
-    attached to a platform before it can be called.
+    The entity is no longer attached to a platform at that point, so writing
+    state would raise.
     """
     entity = AdamAudioGroupEntity(hass)
-    await entity.async_will_remove_from_hass()
+    coordinator = MagicMock()
+    coordinator.client.available = True
+
+    async def remove_mid_command(_value: bool) -> None:
+        await entity.async_will_remove_from_hass()
+
+    coordinator.client.async_set_mute = AsyncMock(side_effect=remove_mid_command)
 
     with (
-        patch.object(entity, "_coordinators", return_value=[MagicMock(), MagicMock()]),
-        patch.object(Entity, "_async_write_ha_state") as mock_super_write,
+        patch.object(entity, "_all_coordinators", return_value=[coordinator]),
+        patch.object(entity, "async_write_ha_state") as mock_write,
     ):
-        entity._async_write_ha_state()
+        await entity._async_call_all("async_set_mute", True)
 
-    mock_super_write.assert_not_called()
+    coordinator.async_notify_state.assert_called_once()
+    mock_write.assert_not_called()
 
 
 async def test_group_entity_survives_double_unsub_after_removal(
@@ -474,8 +475,7 @@ async def test_group_entity_survives_double_unsub_after_removal(
 
     An unsub() that raises if invoked a second time (mirroring
     DataUpdateCoordinator's real behavior) must only ever be called once,
-    even when async_write_ha_state() is invoked again for a
-    coordinator-count that mismatches the (now-zeroed) subscribed count.
+    even when a coordinator change arrives after removal.
     """
     entity = AdamAudioGroupEntity(hass)
 
@@ -488,16 +488,12 @@ async def test_group_entity_survives_double_unsub_after_removal(
             raise KeyError(23)
 
     entity._unsub_listeners = [unsub_like_coordinator]
-    entity._subscribed_count = 1
 
     # Entity torn down mid-command, e.g. by a config entry reload.
     await entity.async_will_remove_from_hass()
     assert calls == 1
 
-    # A suspended _async_call_all resumes and calls async_write_ha_state()
-    # after removal; this must not attempt to unsub again.
-    with patch.object(entity, "_coordinators", return_value=[MagicMock(), MagicMock()]):
-        entity._async_write_ha_state()
+    entity._on_coordinators_changed()
 
     assert calls == 1
 

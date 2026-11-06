@@ -203,9 +203,9 @@ async def test_group_entities_survive_reload(
 ) -> None:
     """Test group entities are recreated when their owning entry reloads.
 
-    Regression test: the group_*_added flags were never reset on unload, so
-    any reload (e.g. after an options update) removed the group entities
-    until Home Assistant was restarted.
+    Regression test: the group ownership was never reset on unload, so any
+    reload (e.g. after an options update) removed the group entities until
+    Home Assistant was restarted.
     """
     mock_config_entry.add_to_hass(hass)
 

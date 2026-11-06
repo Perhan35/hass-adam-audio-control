@@ -113,9 +113,7 @@ async def async_setup_entry(
         AdamAudioNumber(coordinator, desc) for desc in _NUMBER_DESCRIPTORS
     ]
 
-    if not integration_data.group_numbers_added:
-        integration_data.group_numbers_added = True
-        integration_data.group_owner_entry_id = entry.entry_id
+    if integration_data.group_owner_entry_id == entry.entry_id:
         entities += [AdamAudioGroupNumber(hass, desc) for desc in _NUMBER_DESCRIPTORS]
 
     async_add_entities(entities)
