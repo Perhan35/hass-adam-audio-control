@@ -134,6 +134,8 @@ On Home Assistant 2026.6 and later, picking any entity from a speaker (e.g. its 
 
 All cards use the **same configuration schema**, so you can switch between them by changing the `type` field.
 
+If an entity in the card configuration doesn't exist in Home Assistant (a typo, or a renamed speaker), the card shows an **Entity not found** banner listing which ones, instead of failing silently.
+
 ### Cards available
 
 - `custom:adam-audio-card`
@@ -247,6 +249,8 @@ pip install pyadamaudiocontroller
 ```
 
 This library (`lib/pyadamaudiocontroller/`) handles all low-level UDP communication with the speakers and has zero dependencies beyond the Python standard library. It is used by both the HACS custom component and the HA Core integration.
+
+Integration v0.5.0 installs it automatically (`pyadamaudiocontroller>=1.1.0`, currently **1.1.1** on PyPI): you don't need to run `pip` yourself.
 
 ---
 
