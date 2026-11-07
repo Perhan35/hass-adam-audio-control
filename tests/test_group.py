@@ -34,6 +34,7 @@ from homeassistant.const import (
     STATE_OFF,
     STATE_ON,
     STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
 )
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -46,8 +47,10 @@ RIGHT_HOST = "192.168.1.2"
 GROUP_IDENTIFIER = (DOMAIN, GROUP_DEVICE_ID)
 GROUP_MUTE = "switch.all_speakers_mute"
 GROUP_BASS = "number.all_speakers_bass"
+GROUP_INPUT = "select.all_speakers_input_source"
+GROUP_VOICING = "select.all_speakers_voicing"
 GROUP_ENTITY_COUNT = 8
-TOTAL_ENTITY_COUNT = 24
+TOTAL_ENTITY_COUNT = 26
 
 
 def _fake_client(serial: str, description: str) -> MagicMock:
@@ -469,6 +472,73 @@ async def test_group_entity_id_changed_defers_to_home_assistant(
 # ── The group state must stay right ──────────────────────────────────────────
 
 
+async def test_group_shows_unknown_when_speakers_differ(
+    hass: HomeAssistant,
+    left_entry: MockConfigEntry,
+    right_entry: MockConfigEntry,
+    right_client: MagicMock,
+) -> None:
+    """Different speakers must not be shown as if they matched."""
+    await _start(hass, left_entry, right_entry)
+    assert hass.states.get(GROUP_INPUT).state == "XLR"
+    assert hass.states.get(GROUP_VOICING).state == "Pure"
+    assert float(hass.states.get(GROUP_BASS).state) == 0.0
+
+    right_client.state.input_source = 0
+    right_client.state.voicing = 1
+    right_client.state.bass = -1
+    await _poll(hass, right_entry)
+
+    assert hass.states.get(GROUP_INPUT).state == STATE_UNKNOWN
+    assert hass.states.get(GROUP_VOICING).state == STATE_UNKNOWN
+    assert hass.states.get(GROUP_BASS).state == STATE_UNKNOWN
+
+
+async def test_group_eq_skips_speaker_in_ext_voicing(
+    hass: HomeAssistant,
+    left_entry: MockConfigEntry,
+    right_entry: MockConfigEntry,
+    left_client: MagicMock,
+    right_client: MagicMock,
+) -> None:
+    """EQ is disabled in Ext voicing: the group follows the same rule."""
+    await _start(hass, left_entry, right_entry)
+    right_client.state.voicing = 2
+    right_client.state.bass = -2
+    await _poll(hass, right_entry)
+
+    # The Ext speaker's value doesn't count, so the group isn't "unknown".
+    assert float(hass.states.get(GROUP_BASS).state) == 0.0
+
+    await hass.services.async_call(
+        NUMBER_DOMAIN,
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: GROUP_BASS, ATTR_VALUE: -1},
+        blocking=True,
+    )
+
+    left_client.async_set_bass.assert_awaited_once_with(-1)
+    right_client.async_set_bass.assert_not_awaited()
+    assert float(hass.states.get(GROUP_BASS).state) == -1.0
+
+
+async def test_group_eq_unavailable_when_every_speaker_is_in_ext_voicing(
+    hass: HomeAssistant,
+    left_entry: MockConfigEntry,
+    right_entry: MockConfigEntry,
+    left_client: MagicMock,
+    right_client: MagicMock,
+) -> None:
+    """No speaker allows the control, so the group doesn't either."""
+    await _start(hass, left_entry, right_entry)
+    left_client.state.voicing = 2
+    right_client.state.voicing = 2
+    await _poll(hass, left_entry)
+    await _poll(hass, right_entry)
+
+    assert hass.states.get(GROUP_BASS).state == STATE_UNAVAILABLE
+
+
 async def test_returned_speaker_is_followed(
     hass: HomeAssistant,
     left_entry: MockConfigEntry,
@@ -537,7 +607,7 @@ async def test_speaker_off_while_running_leaves_group_usable(
     await _start(hass, left_entry, right_entry)
     right_client.state.bass = 2
     await _poll(hass, right_entry)
-    assert float(hass.states.get(GROUP_BASS).state) == 1.0
+    assert hass.states.get(GROUP_BASS).state == STATE_UNKNOWN
 
     await _go_offline(hass, right_client, right_entry)
     assert hass.states.get(GROUP_MUTE).state == STATE_OFF

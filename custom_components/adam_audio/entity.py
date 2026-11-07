@@ -8,6 +8,7 @@ Two flavours:
 """
 
 import asyncio
+from collections.abc import Callable
 from typing import Any, override
 
 from homeassistant.core import HomeAssistant, callback
@@ -18,6 +19,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import get_coordinators
+from .client import AdamAudioState
 from .const import (
     DOMAIN,
     GROUP_DEVICE_ID,
@@ -84,10 +86,31 @@ class AdamAudioGroupEntity(Entity):
         """Return the speakers that are online: state and commands use only these."""
         return [c for c in self._all_coordinators() if c.client.available]
 
-    async def _async_call_all(self, method_name: str, *args: Any) -> None:
-        """Run a client command on every online speaker, then refresh all entities.
+    def _common_value[T](
+        self,
+        getter: Callable[[AdamAudioState], T],
+        coordinators: list[AdamAudioCoordinator] | None = None,
+    ) -> T | None:
+        """Return the value the speakers agree on, or None if they differ.
 
-        Speakers are commanded concurrently.  The speakers that did apply
+        Showing one speaker's value (or an average) would claim a state the
+        speakers are not in.  Reads the online speakers unless told otherwise.
+        """
+        if coordinators is None:
+            coordinators = self._coordinators()
+        values = {getter(c.client.state) for c in coordinators}
+        return values.pop() if len(values) == 1 else None
+
+    async def _async_call_all(
+        self,
+        method_name: str,
+        *args: Any,
+        coordinators: list[AdamAudioCoordinator] | None = None,
+    ) -> None:
+        """Run a client command on the speakers, then refresh all entities.
+
+        Commands every online speaker unless told otherwise.  Speakers are
+        commanded concurrently.  The speakers that did apply
         the change are refreshed so the UI reflects them; a HomeAssistantError
         is then raised to surface the failure(s) to the user.
 
@@ -96,7 +119,8 @@ class AdamAudioGroupEntity(Entity):
         updated successfully (clearing UpdateFailed) and push their next poll
         a full interval into the future, hiding the failure.
         """
-        coordinators = self._coordinators()
+        if coordinators is None:
+            coordinators = self._coordinators()
         results = await asyncio.gather(
             *(getattr(c.client, method_name)(*args) for c in coordinators),
             return_exceptions=True,

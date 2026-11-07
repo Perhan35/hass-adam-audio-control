@@ -38,6 +38,8 @@ INTEGRATION_FILES = [
     "switch.py",
     "select.py",
     "number.py",
+    "button.py",
+    "diagnostics.py",
     "strings.json",
     "icons.json",
 ]
@@ -54,6 +56,8 @@ TEST_FILES = [
     "test_client.py",
     "test_config_flow.py",
     "test_components.py",
+    "test_group.py",
+    "test_diagnostics.py",
 ]
 
 

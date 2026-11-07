@@ -97,4 +97,6 @@ def mock_client(mock_state: AdamAudioState) -> Generator[MagicMock]:
         client.async_set_desk = AsyncMock()
         client.async_set_presence = AsyncMock()
         client.async_set_treble = AsyncMock()
+        client.async_identify = AsyncMock()
+        client.consecutive_poll_failures = 0
         yield client

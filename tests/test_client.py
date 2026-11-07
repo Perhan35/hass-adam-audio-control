@@ -291,7 +291,7 @@ async def test_client_keepalive_oserror_during_fetch(
 ) -> None:
     """Test fetch_state recovers when opportunistic keepalive raises OSError."""
     adam_client._last_keepalive = 0.0
-    adam_client._device.send_keepalive.side_effect = OSError("timeout")
+    adam_client._device.send_pdus.side_effect = OSError("send failed")
 
     pdus = []
     for val in (1, 0, 1, 0, 0, 0, 0, 0):
@@ -306,10 +306,24 @@ async def test_client_keepalive_oserror_during_fetch(
     assert success is True
 
 
+async def test_client_keepalive_does_not_wait_for_ack(
+    adam_client: AdamAudioClient,
+) -> None:
+    """Speakers only ack a socket's first keepalive: a poll must not wait for it."""
+    adam_client._last_keepalive = 0.0
+    adam_client._device.get_full_state_pdus.return_value = []
+
+    await adam_client.async_fetch_state()
+
+    adam_client._device.send_pdus.assert_called_once()
+    adam_client._device.send_keepalive.assert_not_called()
+    assert adam_client._last_keepalive > 0.0
+
+
 async def test_client_ensure_keepalive_oserror(adam_client: AdamAudioClient) -> None:
     """Test _ensure_keepalive silently handles OSError when session is stale."""
     adam_client._last_keepalive = 0.0
-    adam_client._device.send_keepalive.side_effect = OSError("timeout")
+    adam_client._device.send_pdus.side_effect = OSError("send failed")
     adam_client._device.get_mute.return_value = True
 
     await adam_client.async_set_mute(True)
@@ -354,11 +368,60 @@ async def test_client_async_send_oserror(adam_client: AdamAudioClient) -> None:
 
 
 async def test_client_async_send_success(adam_client: AdamAudioClient) -> None:
-    """Test _async_send succeeds and marks client as available."""
+    """Test _async_send sends the command without claiming the device answered."""
     adam_client._last_keepalive = time.monotonic()
+    adam_client.available = False
     fn = MagicMock()
     fn.__name__ = "test_fn"
 
     await adam_client._async_send(fn)
-    assert adam_client.available is True
+    assert adam_client.available is False
     fn.assert_called_once()
+
+
+async def test_client_identify(adam_client: AdamAudioClient) -> None:
+    """Test identify blinks the LED."""
+    adam_client._last_keepalive = time.monotonic()
+    await adam_client.async_identify()
+    adam_client._device.blink.assert_called_once()
+
+
+async def test_client_silent_speaker_is_not_marked_reachable(
+    adam_client: AdamAudioClient,
+) -> None:
+    """A command nobody answered must not hide earlier failed polls.
+
+    A UDP send succeeds even when nothing is listening, so only a read-back
+    proves the speaker is there.
+    """
+    adam_client.RETRY_DELAY = 0
+    adam_client._last_keepalive = time.monotonic()
+    adam_client._device.set_mute.__name__ = "set_mute"
+    adam_client._device.get_mute.side_effect = TimeoutError("silent")
+    adam_client._consecutive_poll_failures = 1
+
+    with pytest.raises(HomeAssistantError):
+        await adam_client.async_set_mute(True)
+    assert adam_client.consecutive_poll_failures == 1
+
+    adam_client.available = False
+    with pytest.raises(HomeAssistantError):
+        await adam_client.async_set_mute(True)
+    assert adam_client.available is False
+
+
+async def test_client_read_back_marks_speaker_reachable(
+    adam_client: AdamAudioClient,
+) -> None:
+    """An answer proves the speaker is there, even if the value is wrong."""
+    adam_client.RETRY_DELAY = 0
+    adam_client._last_keepalive = time.monotonic()
+    adam_client._device.set_mute.__name__ = "set_mute"
+    adam_client._device.get_mute.return_value = False
+    adam_client._consecutive_poll_failures = 1
+    adam_client.available = False
+
+    with pytest.raises(HomeAssistantError):
+        await adam_client.async_set_mute(True)
+    assert adam_client.available is True
+    assert adam_client.consecutive_poll_failures == 0

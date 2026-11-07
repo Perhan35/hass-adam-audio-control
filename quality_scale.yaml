@@ -21,9 +21,7 @@ rules:
   docs-triggers:
     status: exempt
     comment: This integration does not have any triggers.
-  entity-event-setup:
-    status: exempt
-    comment: Entities do not subscribe to events.
+  entity-event-setup: done
   entity-unique-id: done
   has-entity-name: done
   runtime-data: done
@@ -49,9 +47,7 @@ rules:
   test-coverage: done
   # Gold
   devices: done
-  diagnostics:
-    status: todo
-    comment: Not yet implemented.
+  diagnostics: done
   discovery: done
   discovery-update-info: done
   docs-data-update: done
@@ -72,18 +68,14 @@ rules:
   entity-device-class: done
   entity-disabled-by-default:
     status: exempt
-    comment: All entities are primary controls a user wants visible by default.
+    comment: All entities are controls a user wants available by default.
   entity-translations: done
   exception-translations:
     status: todo
     comment: Raised exceptions do not yet use translation_domain/translation_key.
   icon-translations: done
-  reconfiguration-flow:
-    status: todo
-    comment: Host/port are meaningfully reconfigurable independent of the serial-based unique_id, but async_step_reconfigure is not yet implemented.
-  repair-issues:
-    status: todo
-    comment: No issue_registry usage yet; e.g. a serial mismatch on rediscovery only raises ConfigEntryNotReady today.
+  reconfiguration-flow: done
+  repair-issues: done
   stale-devices:
     status: exempt
     comment: Single-device-per-config-entry architecture; the group device is virtual and layered over real devices already tracked normally.

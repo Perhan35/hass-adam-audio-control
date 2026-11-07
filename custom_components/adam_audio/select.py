@@ -72,9 +72,9 @@ class AdamAudioInputSelect(AdamAudioEntity, SelectEntity):
 
     @property
     @override
-    def current_option(self) -> str:
-        """Return the current input source."""
-        return INPUT_FROM_INT.get(self.coordinator.client.state.input_source, "XLR")
+    def current_option(self) -> str | None:
+        """Return the current input source, or None if the value is unknown."""
+        return INPUT_FROM_INT.get(self.coordinator.client.state.input_source)
 
     @override
     async def async_select_option(self, option: str) -> None:
@@ -99,9 +99,9 @@ class AdamAudioVoicingSelect(AdamAudioEntity, SelectEntity):
 
     @property
     @override
-    def current_option(self) -> str:
-        """Return the current voicing mode."""
-        return VOICING_FROM_INT.get(self.coordinator.client.state.voicing, "Pure")
+    def current_option(self) -> str | None:
+        """Return the current voicing mode, or None if the value is unknown."""
+        return VOICING_FROM_INT.get(self.coordinator.client.state.voicing)
 
     @override
     async def async_select_option(self, option: str) -> None:
@@ -123,12 +123,10 @@ class AdamAudioGroupInputSelect(AdamAudioGroupEntity, SelectEntity):
 
     @property
     @override
-    def current_option(self) -> str:
-        """Return the first speaker's input source (they usually match)."""
-        coordinators = self._coordinators()
-        if not coordinators:
-            return INPUT_OPTIONS[0]
-        return INPUT_FROM_INT.get(coordinators[0].client.state.input_source, "XLR")
+    def current_option(self) -> str | None:
+        """Return the speakers' common input source, or None if they differ."""
+        value = self._common_value(lambda state: state.input_source)
+        return None if value is None else INPUT_FROM_INT.get(value)
 
     @override
     async def async_select_option(self, option: str) -> None:
@@ -146,12 +144,10 @@ class AdamAudioGroupVoicingSelect(AdamAudioGroupEntity, SelectEntity):
 
     @property
     @override
-    def current_option(self) -> str:
-        """Return the first speaker's voicing mode (they usually match)."""
-        coordinators = self._coordinators()
-        if not coordinators:
-            return VOICING_OPTIONS[0]
-        return VOICING_FROM_INT.get(coordinators[0].client.state.voicing, "Pure")
+    def current_option(self) -> str | None:
+        """Return the speakers' common voicing mode, or None if they differ."""
+        value = self._common_value(lambda state: state.voicing)
+        return None if value is None else VOICING_FROM_INT.get(value)
 
     @override
     async def async_select_option(self, option: str) -> None:

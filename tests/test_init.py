@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.adam_audio import _async_reload_entry, async_setup
+from custom_components.adam_audio import async_setup
 from custom_components.adam_audio.const import (
     CONF_DEVICE_NAME,
     CONF_SERIAL,
@@ -16,7 +16,7 @@ from custom_components.adam_audio.const import (
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_DESCRIPTION, CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import entity_registry as er, issue_registry as ir
 
 from .conftest import (
     MOCK_DESCRIPTION,
@@ -225,17 +225,6 @@ async def test_group_entities_survive_reload(
     assert hass.states.get("switch.all_speakers_mute") is not None
     assert hass.states.get("number.all_speakers_bass") is not None
     assert hass.states.get("select.all_speakers_voicing") is not None
-
-
-async def test_async_reload_entry(hass: HomeAssistant, mock_config_entry) -> None:
-    """Test _async_reload_entry triggers config entry reload."""
-    mock_config_entry.add_to_hass(hass)
-
-    with patch.object(
-        hass.config_entries, "async_reload", new_callable=AsyncMock
-    ) as mock_reload:
-        await _async_reload_entry(hass, mock_config_entry)
-        mock_reload.assert_called_once_with(mock_config_entry.entry_id)
 
 
 async def test_migrates_stale_hardware_name_unique_id(
@@ -552,3 +541,51 @@ async def test_coordinator_survives_single_failed_poll(
     await hass.async_block_till_done()
 
     assert coordinator.last_update_success is True
+
+
+async def test_serial_mismatch_raises_repair_issue_until_fixed(
+    hass: HomeAssistant,
+    mock_client: MagicMock,
+    mock_config_entry: MockConfigEntry,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """A different speaker at the address is reported, and cleared once it's fixed."""
+    issue_id = f"serial_mismatch_{mock_config_entry.entry_id}"
+    mock_client.serial = "SN-OTHER"
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
+    issue = issue_registry.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.severity is ir.IssueSeverity.ERROR
+    assert not issue.is_fixable
+    assert issue.translation_placeholders["actual"] == "SN-OTHER"
+
+    mock_client.serial = MOCK_SERIAL
+    await hass.config_entries.async_reload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert mock_config_entry.state is ConfigEntryState.LOADED
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is None
+
+
+async def test_removing_entry_clears_repair_issue(
+    hass: HomeAssistant,
+    mock_client: MagicMock,
+    mock_config_entry: MockConfigEntry,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    """Removing the speaker must not leave its repair issue behind."""
+    issue_id = f"serial_mismatch_{mock_config_entry.entry_id}"
+    mock_client.serial = "SN-OTHER"
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is not None
+
+    await hass.config_entries.async_remove(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is None

@@ -9,6 +9,8 @@ README="README.md"
 VERSION=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['version'])")
 
 # Replace the version badge (matches: badge/version-<anything>-green.svg)
-sed -i '' -E "s|badge/version-[^)]*-green\.svg|badge/version-${VERSION}-green.svg|" "$README"
+# Written through a temp file because `sed -i` differs between macOS and Linux.
+sed -E "s|badge/version-[^)]*-green\.svg|badge/version-${VERSION}-green.svg|" "$README" > "$README.tmp"
+mv "$README.tmp" "$README"
 
 git add "$README"

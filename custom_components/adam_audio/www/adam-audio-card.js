@@ -395,11 +395,6 @@ class AdamAudioCard extends HTMLElement {
 
   /* ── HACS / Lovelace metadata ─────────────────────────────────────────── */
 
-  static getConfigElement() {
-    // Visual editor stub — extend later for GUI editing
-    return document.createElement("div");
-  }
-
   static getStubConfig() {
     return {
       title: "Studio Monitor",
@@ -597,6 +592,8 @@ class AdamAudioCard extends HTMLElement {
     const root = this.shadowRoot;
     const e = this._entities;
 
+    this._showMissingEntities(root.querySelector(".card"));
+
     // Availability / status
     const available = this._isAvailable(e.mute);
     root.querySelector(".card").classList.toggle("unavailable", !available);
@@ -637,8 +634,9 @@ class AdamAudioCard extends HTMLElement {
     ["bass", "desk", "presence", "treble"].forEach((key) => {
       const slider = root.getElementById(`slider-${key}`);
       if (!slider.matches(":active")) {
+        // NaN when unknown (group speakers differ) or unavailable.
         const val = parseInt(this._stateValue(e[key]) ?? "0", 10);
-        slider.value = val;
+        slider.value = Number.isNaN(val) ? 0 : val;
         this._updateEqValue(key, val);
       }
     });
@@ -647,7 +645,11 @@ class AdamAudioCard extends HTMLElement {
   _updateEqValue(key, val) {
     const el = this.shadowRoot.getElementById(`val-${key}`);
     if (!el) return;
-    el.textContent = val === 0 ? "0 dB" : (val > 0 ? `+${val} dB` : `${val} dB`);
+    if (Number.isNaN(val)) {
+      el.textContent = "—";
+    } else {
+      el.textContent = val === 0 ? "0 dB" : (val > 0 ? `+${val} dB` : `${val} dB`);
+    }
     el.classList.toggle("zero", val === 0);
   }
 
@@ -665,6 +667,29 @@ class AdamAudioCard extends HTMLElement {
   _stateValue(entityId) {
     const s = this._stateObj(entityId);
     return s ? s.state : null;
+  }
+
+  // Warn about configured entities Home Assistant doesn't know, which would
+  // otherwise render as a plausible but false state.
+  _showMissingEntities(anchor) {
+    const missing = ["mute", "sleep", "input", "voicing", "bass", "desk", "presence", "treble"]
+      .map((key) => this._entities[key])
+      .filter((id) => id && !this._hass.states[id]);
+    const text = missing.length ? `Entity not found: ${missing.join(", ")}` : "";
+    let banner = this.shadowRoot.querySelector(".missing-entities");
+    if (banner?.textContent === text || (!banner && !text)) return;
+    if (!text) {
+      banner.remove();
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.className = "missing-entities";
+      banner.setAttribute("role", "alert");
+      banner.style.cssText = "padding:8px 12px;margin-bottom:8px;border-radius:8px;font-size:12px;overflow-wrap:anywhere;color:#fff;background:var(--error-color,#db4437)";
+      anchor.before(banner);
+    }
+    banner.textContent = text;
   }
 
   _isAvailable(entityId) {
@@ -700,13 +725,22 @@ class AdamAudioCard extends HTMLElement {
   getCardSize() { return 5; }
 }
 
-try {
-  customElements.define("adam-audio-card", AdamAudioCard);
-} catch (e) {
-  if (!e.message.includes("already been used")) {
-    console.error("Failed to register adam-audio-card:", e);
+// The frontend swaps in a scoped registry polyfill while app.js loads, and
+// that registry can't see anything defined earlier. These small modules can
+// win that race on an uncached load, so wait for the app (or a timeout, for
+// pages without it) before defining the card.
+Promise.race([
+  customElements.whenDefined("home-assistant"),
+  new Promise((resolve) => setTimeout(resolve, 5000)),
+]).then(() => {
+  try {
+    customElements.define("adam-audio-card", AdamAudioCard);
+  } catch (e) {
+    if (!e.message.includes("already been used")) {
+      console.error("Failed to register adam-audio-card:", e);
+    }
   }
-}
+});
 
 // Maps each entity's registry `translation_key` to the config key this
 // card expects under `entities:` (see getStubConfig above).

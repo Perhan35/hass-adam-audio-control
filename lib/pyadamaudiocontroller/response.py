@@ -3,6 +3,8 @@
 Originally from the pacontrol library by dmach (https://github.com/dmach/pacontrol).
 """
 
+from __future__ import annotations
+
 import io
 from typing import BinaryIO
 

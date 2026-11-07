@@ -4,8 +4,8 @@ Supports ADAM Audio A-Series studio monitors via AES70/OCA over UDP.
 Auto-discovers speakers via mDNS (_oca._udp.local.) and also accepts
 manually configured IP addresses as a fallback.
 
-Each physical speaker becomes an HA Device with Switch, Select, and Number
-child entities.  A virtual 'All Speakers' group device is automatically
+Each physical speaker becomes an HA Device with Switch, Select, Number and
+Button child entities.  A virtual 'All Speakers' group device is automatically
 created to control all speakers simultaneously.
 """
 
@@ -13,7 +13,11 @@ from pathlib import Path
 
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+)
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
@@ -25,7 +29,7 @@ from .const import (
     LOGGER,
     SIGNAL_COORDINATORS_CHANGED,
 )
-from .coordinator import AdamAudioCoordinator
+from .coordinator import AdamAudioCoordinator, serial_mismatch_issue_id
 from .data import AdamAudioConfigEntry, AdamAudioData, AdamAudioIntegrationData
 
 _WWW_DIR = Path(__file__).parent / "www"
@@ -33,6 +37,7 @@ _WWW_DIR = Path(__file__).parent / "www"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
     Platform.NUMBER,
     Platform.SELECT,
     Platform.SWITCH,
@@ -109,10 +114,7 @@ async def async_setup_entry(
     _async_migrate_entry_unique_id(hass, entry, coordinator)
     _async_migrate_entity_unique_ids(hass, entry, coordinator)
 
-    entry.runtime_data = AdamAudioData(
-        client=coordinator.client,
-        coordinator=coordinator,
-    )
+    entry.runtime_data = AdamAudioData(coordinator=coordinator)
 
     # Ensure integration-wide state exists (especially for tests). Tracks group
     # entities across ALL config entries, so it can't live on runtime_data.
@@ -129,9 +131,6 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async_dispatcher_send(hass, SIGNAL_COORDINATORS_CHANGED)
-
-    # Re-run setup if the entry's options are updated (e.g., host changed).
-    entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 
     return True
 
@@ -171,6 +170,14 @@ async def async_unload_entry(
             LOGGER.debug("Skipping coordinator cleanup (domain data missing)")
 
     return unload_ok
+
+
+async def async_remove_entry(
+    hass: HomeAssistant,
+    entry: AdamAudioConfigEntry,
+) -> None:
+    """Drop the repair issue of a speaker that is being removed."""
+    ir.async_delete_issue(hass, DOMAIN, serial_mismatch_issue_id(entry))
 
 
 def _async_adopt_group_device(hass: HomeAssistant, entry: AdamAudioConfigEntry) -> None:
@@ -328,11 +335,3 @@ def _async_migrate_entity_unique_ids(
             reg_entry.unique_id,
             new_unique_id,
         )
-
-
-async def _async_reload_entry(
-    hass: HomeAssistant,
-    entry: AdamAudioConfigEntry,
-) -> None:
-    """Reload entry after options update."""
-    await hass.config_entries.async_reload(entry.entry_id)

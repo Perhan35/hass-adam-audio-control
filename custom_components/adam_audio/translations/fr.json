@@ -16,6 +16,18 @@
       "zeroconf_confirm": {
         "title": "Enceinte ADAM Audio détectée",
         "description": "**{name}** trouvée à l'adresse `{host}`. Voulez-vous l'ajouter à Home Assistant ?"
+      },
+      "reconfigure": {
+        "title": "Reconfigurer l'enceinte ADAM Audio",
+        "description": "Corrigez l'adresse IP ou le port de cette enceinte. Si vous ne connaissez pas le port, laissez la valeur par défaut ({default_port}).",
+        "data": {
+          "host": "Adresse IP ou nom d'hôte",
+          "port": "Port UDP (défaut 49494)"
+        },
+        "data_description": {
+          "host": "Adresse IP ou nom d'hôte de votre enceinte ADAM Audio.",
+          "port": "Port UDP de votre enceinte ADAM Audio."
+        }
       }
     },
     "error": {
@@ -23,7 +35,9 @@
     },
     "abort": {
       "already_configured": "Cette enceinte est déjà configurée. Son adresse réseau a été mise à jour.",
-      "cannot_connect": "Impossible de se connecter à l'appareil détecté. Vérifiez que l'enceinte est allumée ; elle sera détectée à nouveau automatiquement."
+      "cannot_connect": "Impossible de se connecter à l'appareil détecté. Vérifiez que l'enceinte est allumée ; elle sera détectée à nouveau automatiquement.",
+      "reconfigure_successful": "L'adresse de l'enceinte a été mise à jour.",
+      "wrong_device": "Une autre enceinte a répondu à cette adresse. Pour remplacer une enceinte, supprimez-la puis ajoutez la nouvelle."
     }
   },
   "entity": {
@@ -56,6 +70,12 @@
       "treble": {
         "name": "Aigus"
       }
+    }
+  },
+  "issues": {
+    "serial_mismatch": {
+      "title": "{title} : une autre enceinte répond à {host}",
+      "description": "L'enceinte configurée sous le nom **{title}** a le numéro de série `{expected}`, mais l'appareil à l'adresse `{host}` indique `{actual}`. Cela arrive généralement quand votre box attribue l'adresse à une autre enceinte.\n\nSi l'enceinte est de nouveau détectée sur le réseau, cela se corrige automatiquement. Sinon, allez dans **Paramètres > Appareils et services > ADAM Audio** et utilisez **Reconfigurer** pour saisir la bonne adresse."
     }
   }
 }

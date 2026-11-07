@@ -1,8 +1,7 @@
 """Switch platform for ADAM Audio — Mute and Sleep.
 
-Each physical speaker exposes two switches.  A single 'All Speakers' group
-switch is also created the first time the platform is loaded; subsequent
-config-entry loads skip it because the unique_id is already registered.
+Each physical speaker exposes two switches.  The 'All Speakers' group switches
+are created once, by the config entry that owns the group.
 """
 
 from typing import Any, override

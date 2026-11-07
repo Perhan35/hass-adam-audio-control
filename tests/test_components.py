@@ -25,11 +25,19 @@ from custom_components.adam_audio.switch import (
     AdamAudioGroupMuteSwitch,
     AdamAudioGroupSleepSwitch,
 )
+from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN, SERVICE_PRESS
 from homeassistant.components.number import ATTR_VALUE, SERVICE_SET_VALUE
 from homeassistant.components.select import ATTR_OPTION, SERVICE_SELECT_OPTION
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
-from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_OFF, SERVICE_TURN_ON
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+    STATE_UNKNOWN,
+    EntityCategory,
+)
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import DATA_ENTITY_PLATFORM
 
 
@@ -308,15 +316,15 @@ async def test_group_switch_no_coordinators(hass: HomeAssistant) -> None:
 
 
 async def test_group_select_no_coordinators(hass: HomeAssistant) -> None:
-    """Test group selects return defaults when no coordinators are loaded."""
-    assert AdamAudioGroupInputSelect(hass).current_option == "RCA"
-    assert AdamAudioGroupVoicingSelect(hass).current_option == "Pure"
+    """Test group selects report no option when no coordinators are loaded."""
+    assert AdamAudioGroupInputSelect(hass).current_option is None
+    assert AdamAudioGroupVoicingSelect(hass).current_option is None
 
 
 async def test_group_number_no_coordinators(hass: HomeAssistant) -> None:
-    """Test group number returns min value when no coordinators are loaded."""
+    """Test group number reports no value when no coordinators are loaded."""
     num = AdamAudioGroupNumber(hass, _NUMBER_DESCRIPTORS[0])
-    assert num.native_value == _NUMBER_DESCRIPTORS[0].native_min
+    assert num.native_value is None
 
 
 def test_number_unavailable_parent() -> None:
@@ -341,26 +349,65 @@ def test_number_available_null_voicings() -> None:
         assert entity.available is True
 
 
-def test_group_number_unavailable_parent() -> None:
-    """Test group number returns unavailable when parent is unavailable."""
+def test_group_number_unavailable_without_active_speaker() -> None:
+    """Test group number is unavailable when no online speaker allows the control."""
     entity = object.__new__(AdamAudioGroupNumber)
     entity._desc = _NUMBER_DESCRIPTORS[0]
 
-    with patch.object(
-        AdamAudioGroupEntity, "available", new_callable=PropertyMock, return_value=False
-    ):
+    with patch.object(AdamAudioGroupEntity, "_coordinators", return_value=[]):
         assert entity.available is False
 
 
 def test_group_number_available_null_voicings() -> None:
-    """Test group number available when valid_voicings is None."""
+    """Test group number ignores the voicing when valid_voicings is None."""
     entity = object.__new__(AdamAudioGroupNumber)
     entity._desc = replace(_NUMBER_DESCRIPTORS[0], valid_voicings=None)
+    coordinator = MagicMock()
+    coordinator.client.state.voicing = 2
 
     with patch.object(
-        AdamAudioGroupEntity, "available", new_callable=PropertyMock, return_value=True
+        AdamAudioGroupEntity, "_coordinators", return_value=[coordinator]
     ):
         assert entity.available is True
+
+
+async def test_unknown_device_values_are_reported_as_unknown(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """A value the integration can't name must not be shown as a real option."""
+    mock_client.state.input_source = 99
+    mock_client.state.voicing = 99
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    for entity_id in (
+        "select.left_speaker_input_source",
+        "select.left_speaker_voicing",
+        "select.all_speakers_input_source",
+        "select.all_speakers_voicing",
+    ):
+        assert hass.states.get(entity_id).state == STATE_UNKNOWN
+
+
+async def test_identify_button(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_client: MagicMock
+) -> None:
+    """Test the identify button blinks the speaker, and only exists per speaker."""
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    entity_id = "button.left_speaker_identify"
+    assert hass.states.get("button.all_speakers_identify") is None
+    assert (
+        er.async_get(hass).async_get(entity_id).entity_category == EntityCategory.CONFIG
+    )
+
+    await hass.services.async_call(
+        BUTTON_DOMAIN, SERVICE_PRESS, {ATTR_ENTITY_ID: entity_id}, blocking=True
+    )
+    mock_client.async_identify.assert_awaited_once()
 
 
 @pytest.mark.usefixtures("mock_config_entry", "mock_client")

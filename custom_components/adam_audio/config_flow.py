@@ -1,12 +1,14 @@
 """Config flow for ADAM Audio.
 
-Two entry points:
+Three entry points:
   1. Zeroconf auto-discovery  — HA detects an _oca._udp.local. service and
      triggers async_step_zeroconf.  The user just confirms.
   2. Manual                   — User adds the integration from the UI and
      types in an IP address + port.
+  3. Reconfigure              — User corrects the IP address + port of a speaker
+     that is already set up.
 
-In both cases we attempt a real connection to the device to verify
+In all cases we attempt a real connection to the device to verify
 reachability and fetch the human-readable description ("Left", "Right", …)
 before creating the config entry.
 """
@@ -15,7 +17,7 @@ from typing import Any, override
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_DESCRIPTION, CONF_HOST, CONF_PORT
 from homeassistant.helpers.selector import (
     NumberSelector,
@@ -36,6 +38,18 @@ _MANUAL_SCHEMA = vol.Schema(
         ),
     }
 )
+
+
+def _is_same_speaker(entry: ConfigEntry, device_name: str, serial: str) -> bool:
+    """Return whether a device that answered is the speaker of this entry.
+
+    The serial decides when both sides have one.  The hardware name is the
+    fallback for an old entry that was never set up with a known serial.
+    """
+    expected_serial = entry.data.get(CONF_SERIAL)
+    if expected_serial and serial:
+        return serial == expected_serial
+    return device_name == entry.data[CONF_DEVICE_NAME]
 
 
 class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -92,6 +106,43 @@ class AdamAudioConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=_MANUAL_SCHEMA,
+            errors=errors,
+            description_placeholders={"default_port": str(DEFAULT_PORT)},
+        )
+
+    # ── Reconfigure ───────────────────────────────────────────────────────────
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Correct the address of an existing speaker.
+
+        Pointing the entry at a different speaker is refused: its entities,
+        history and automations belong to the original one.
+        """
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            host = user_input[CONF_HOST].strip()
+            port = int(user_input.get(CONF_PORT, DEFAULT_PORT))
+
+            result = await self._async_try_connect(host, port)
+            if result is None:
+                errors["base"] = "cannot_connect"
+            else:
+                device_name, _description, serial = result
+                if not _is_same_speaker(entry, device_name, serial):
+                    return self.async_abort(reason="wrong_device")
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={CONF_HOST: host, CONF_PORT: port}
+                )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                _MANUAL_SCHEMA, user_input or entry.data
+            ),
             errors=errors,
             description_placeholders={"default_port": str(DEFAULT_PORT)},
         )

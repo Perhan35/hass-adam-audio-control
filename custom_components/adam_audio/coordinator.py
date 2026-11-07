@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, override
 from homeassistant.const import CONF_DESCRIPTION, CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -30,6 +31,7 @@ from .const import (
     CONF_DEVICE_NAME,
     CONF_SERIAL,
     DOMAIN,
+    ISSUE_SERIAL_MISMATCH,
     LOGGER,
     MANUFACTURER,
     POLL_INTERVAL,
@@ -39,6 +41,11 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
     from .data import AdamAudioConfigEntry
+
+
+def serial_mismatch_issue_id(entry: AdamAudioConfigEntry) -> str:
+    """Return the repair issue id for a speaker answering with another serial."""
+    return f"{ISSUE_SERIAL_MISMATCH}_{entry.entry_id}"
 
 
 # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
@@ -98,6 +105,20 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
             # different A-Series device, silently swapping the coordinator's
             # identity (and exposed controls) for the wrong speaker.
             if self.device_serial and self.client.serial != self.device_serial:
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    serial_mismatch_issue_id(self.config_entry),
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.ERROR,
+                    translation_key=ISSUE_SERIAL_MISMATCH,
+                    translation_placeholders={
+                        "title": self.config_entry.title,
+                        "host": self.client.host,
+                        "expected": self.device_serial,
+                        "actual": self.client.serial,
+                    },
+                )
                 raise ConfigEntryNotReady(
                     f"Device at {self.client.host}:{self.client.port} reports "
                     f"serial '{self.client.serial}', but this entry is "
@@ -105,6 +126,10 @@ class AdamAudioCoordinator(DataUpdateCoordinator[AdamAudioState]):
                     "address may now belong to a different ADAM Audio speaker."
                 )
             self.device_serial = self.client.serial
+
+        ir.async_delete_issue(
+            self.hass, DOMAIN, serial_mismatch_issue_id(self.config_entry)
+        )
 
         # First refresh also does a full state poll so entities have real
         # values from the moment they appear in HA.
