@@ -627,10 +627,6 @@
 
     /* ── HACS / Lovelace metadata ───────────────────────────────────────── */
 
-    static getConfigElement() {
-      return document.createElement("div");
-    }
-
     static getStubConfig() {
       return {
         title: "Studio Monitor",
@@ -891,6 +887,8 @@
       const root = this.shadowRoot;
       const e = this._entities;
 
+      this._showMissingEntities(root.querySelector(".backplate"));
+
       // Availability
       const available = this._isAvailable(e.mute);
       root.querySelector(".backplate").classList.toggle("unavailable", !available);
@@ -986,6 +984,29 @@
       return s ? s.state : null;
     }
 
+    // Warn about configured entities Home Assistant doesn't know, which would
+    // otherwise render as a plausible but false state.
+    _showMissingEntities(anchor) {
+      const missing = ["mute", "sleep", "input", "voicing", "bass", "desk", "presence", "treble"]
+        .map((key) => this._entities[key])
+        .filter((id) => id && !this._hass.states[id]);
+      const text = missing.length ? `Entity not found: ${missing.join(", ")}` : "";
+      let banner = this.shadowRoot.querySelector(".missing-entities");
+      if (banner?.textContent === text || (!banner && !text)) return;
+      if (!text) {
+        banner.remove();
+        return;
+      }
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.className = "missing-entities";
+        banner.setAttribute("role", "alert");
+        banner.style.cssText = "padding:8px 12px;margin-bottom:8px;border-radius:8px;font-size:12px;overflow-wrap:anywhere;color:#fff;background:var(--error-color,#db4437)";
+        anchor.before(banner);
+      }
+      banner.textContent = text;
+    }
+
     _isAvailable(entityId) {
       const s = this._stateObj(entityId);
       return !!s && s.state !== "unavailable" && s.state !== "unknown";
@@ -1019,13 +1040,22 @@
     getCardSize() { return 7; }
   }
 
-  try {
-    customElements.define("adam-audio-backplate-card-alt", AdamAudioBackplateCard);
-  } catch (e) {
-    if (!e.message.includes("already been used")) {
-      console.error("Failed to register adam-audio-backplate-card-alt:", e);
+  // The frontend swaps in a scoped registry polyfill while app.js loads, and
+  // that registry can't see anything defined earlier. These small modules can
+  // win that race on an uncached load, so wait for the app (or a timeout, for
+  // pages without it) before defining the card.
+  Promise.race([
+    customElements.whenDefined("home-assistant"),
+    new Promise((resolve) => setTimeout(resolve, 5000)),
+  ]).then(() => {
+    try {
+      customElements.define("adam-audio-backplate-card-alt", AdamAudioBackplateCard);
+    } catch (e) {
+      if (!e.message.includes("already been used")) {
+        console.error("Failed to register adam-audio-backplate-card-alt:", e);
+      }
     }
-  }
+  });
 
   // Maps each entity's registry `translation_key` to the config key this
   // card expects under `entities:` (see getStubConfig above).

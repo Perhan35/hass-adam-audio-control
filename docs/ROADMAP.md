@@ -1,44 +1,55 @@
 # Roadmap
 
-Planned work after the integration lands in Home Assistant Core
-([core#166511](https://github.com/home-assistant/core/pull/166511),
-[home-assistant.io#44305](https://github.com/home-assistant/home-assistant.io/pull/44305)).
+The integration is distributed through **HACS**, which is the current priority.
 
-The integration ships at **Silver** on the
-[Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/)
-as requirements are already fully met. The two sections below are what Gold and Platinum still require, as
-tracked in [`quality_scale.yaml`](../quality_scale.yaml).
+## Decisions to make
 
-These are deliberately kept out of the initial Core submission: reviewers prefer a new integration
-to land at bronze and iterate, and Platinum in particular changes the `pyadamaudiocontroller` public
-API.
+### License of the protocol library
+
+The repository and the `pyadamaudiocontroller` package are published under **MIT**. The headers of
+the library's files (`device.py`, `command.py`, `keepalive.py`, `message.py`, `response.py`,
+`types.py` and `util.py`) say the code comes from [pacontrol](https://github.com/dmach/pacontrol) by
+dmach, which is licensed **GPL-3.0**.
+
+These two licenses don't normally combine without the author's agreement. To settle, ideally with
+legal advice, before any new Core submission. The options are:
+
+- ask dmach for permission or for a different license
+- publish the library under GPL-3.0, after checking what that means for Core
+- rewrite the affected code from the AES70 standard
+
+## Home Assistant Core
+
+[core#166511](https://github.com/home-assistant/core/pull/166511) and
+[home-assistant.io#44305](https://github.com/home-assistant/home-assistant.io/pull/44305) were closed
+on 2026-09-15. A new PR is welcome once the review's concerns are addressed, and should link to the
+old one. The review asked for:
+
+- a much smaller PR, limited to a single platform (e.g. `switch` or `select`)
+- no noisy AI comments and methods
+- no `hass.data` suppressed with pylint, which the 'All Speakers' group relies on
+- no unique_id migrations, since a new Core integration has nothing to migrate
+
+The group would therefore probably stay HACS-only at first. `scripts/gen_core.py` still generates the
+full integration, so it would need to be cut down too.
+
+## To check on real speakers
+
+These could not be tested without hardware:
+
+- the **Identify** button actually blinks the LED (`Device.blink` was never used until now)
+- 5 seconds is enough for a speaker to answer, including when waking from sleep
+  (`AdamAudioClient.SOCKET_TIMEOUT`, which was 10 seconds)
+
+## Cards
+
+- Keyboard and screen reader support: the three cards have none.
+- Share the code the three cards duplicate (state helpers, service calls, card suggestions).
+- A visual editor: the cards are configured in YAML.
 
 ## Gold
 
-### Diagnostics (`diagnostics` rule)
-
-Add `diagnostics.py` with `async_get_config_entry_diagnostics`, returning the config entry data, the
-`AdamAudioState` snapshot, `client.available`, the consecutive-failure counters and the poll
-interval. Redact `CONF_HOST` and `CONF_SERIAL` with `async_redact_data`. Cover it with a syrupy
-snapshot test.
-
-### Reconfigure flow (`reconfiguration-flow` rule)
-
-Add `async_step_reconfigure` to [`config_flow.py`](../custom_components/adam_audio/config_flow.py)
-so a speaker's host and port can be corrected without deleting and re-adding the entry. Reuse the
-existing `_async_try_connect` helper, then call
-`self._abort_if_unique_id_mismatch(reason="wrong_device")` so pointing an entry at a *different*
-speaker is rejected rather than silently swapping the entry's identity. Needs matching
-`reconfigure` strings and tests.
-
-### Repair issue for a serial mismatch (`repair-issues` rule)
-
-`AdamAudioCoordinator.async_setup` raises `ConfigEntryNotReady` when the speaker answering at the
-configured address reports a different serial than the entry expects — typically after DHCP hands
-the old IP to another speaker. Today that retries forever with nothing shown to the user.
-
-Raise a non-fixable repair issue (`ir.async_create_issue`, severity `ERROR`) explaining the mismatch
-and pointing at the reconfigure flow above, and delete it once setup succeeds.
+Diagnostics, the reconfigure flow and the serial mismatch repair issue are done. What remains:
 
 ### Exception translations (`exception-translations` rule)
 
@@ -49,10 +60,11 @@ their messages with f-strings, so they are English-only. Convert them to
 
 ### Documentation (`docs-troubleshooting`, `docs-use-cases` rules)
 
-Add a **Troubleshooting** section to the documentation page, and frame the introduction around
+Add a **Troubleshooting** section to the Core documentation page, and frame the introduction around
 concrete use cases. These are the last two `docs-*` rules still open.
 
-Once the above are done, bump `quality_scale` to `gold` in the manifest and `quality_scale.yaml`.
+Once the above are done, bump `quality_scale` to `gold` in `scripts/gen_core.py` and
+`quality_scale.yaml`.
 
 ## Platinum
 
@@ -73,8 +85,8 @@ Add an `AsyncDevice` built on `loop.create_datagram_endpoint` with an `asyncio.D
 - `send_keepalive` becomes a `loop.call_later` task.
 - Keep the synchronous `Device` for non-Home Assistant users.
 
-`client.py` then drops every `async_add_executor_job` call along with the `_run_set` / `_run_get`
-executor targets. The `asyncio.Lock` can stay to serialize commands against polls.
+`client.py` then drops every `async_add_executor_job` call along with the `_run_set` executor target.
+The `asyncio.Lock` can stay to serialize commands against polls.
 
 ### Strict typing (`strict-typing` rule)
 

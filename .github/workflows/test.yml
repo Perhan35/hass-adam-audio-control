@@ -6,6 +6,7 @@ on:
       - main
       - master
   pull_request:
+  workflow_call:
 
 jobs:
   validate:
@@ -23,13 +24,18 @@ jobs:
 
   test-lib:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Every version lib/pyproject.toml declares support for.
+        python-version: ["3.12", "3.13", "3.14"]
+
     steps:
     - uses: actions/checkout@v6
 
-    - name: Set up Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
-        python-version: "3.14"
+        python-version: ${{ matrix.python-version }}
         cache: 'pip'
 
     - name: Install library and test dependencies
@@ -40,11 +46,7 @@ jobs:
 
     - name: Test library
       run: |
-        pytest lib/tests/ -v --cov=pyadamaudiocontroller --cov-report=xml
-
-    - name: Check library coverage threshold
-      run: |
-        pytest lib/tests/ --cov=pyadamaudiocontroller --cov-fail-under=100
+        pytest lib/tests/ -v --cov=pyadamaudiocontroller --cov-fail-under=100
 
   test-integration:
     runs-on: ubuntu-latest
@@ -73,8 +75,4 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest tests/ -v --cov=custom_components.adam_audio --cov-report=xml
-
-    - name: Check coverage threshold
-      run: |
-        pytest tests/ --cov=custom_components.adam_audio --cov-fail-under=95
+        pytest tests/ -v --cov=custom_components.adam_audio --cov-fail-under=95

@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
 
-from .client import AdamAudioClient
 from .coordinator import AdamAudioCoordinator
 
 type AdamAudioConfigEntry = ConfigEntry[AdamAudioData]
@@ -14,7 +13,6 @@ type AdamAudioConfigEntry = ConfigEntry[AdamAudioData]
 class AdamAudioData:
     """Data for the ADAM Audio integration."""
 
-    client: AdamAudioClient
     coordinator: AdamAudioCoordinator
 
 

@@ -6,11 +6,10 @@ and polls never interleave on the UDP socket.
 
 State management
 ────────────────
-• SET commands update ``self.state`` optimistically so the UI responds
-  instantly without waiting for the next poll cycle.
 • After each SET, a read-back verification confirms the device accepted the
   change.  If verification fails, the command is retried up to MAX_RETRIES
   times with RETRY_DELAY seconds between attempts.
+• ``self.state`` is updated only once the device has confirmed the new value.
 • ``async_fetch_state()`` polls all 8 GET commands from the device and
   overwrites ``self.state`` with the real values.  This is called by the
   coordinator on every update interval.
@@ -22,7 +21,7 @@ from dataclasses import dataclass
 import time
 from typing import TYPE_CHECKING, Any
 
-from pyadamaudiocontroller import Device
+from pyadamaudiocontroller import Device, Keepalive
 
 from homeassistant.exceptions import HomeAssistantError
 
@@ -49,7 +48,9 @@ class AdamAudioState:
 class AdamAudioClient:
     """Manages one UDP connection to a single ADAM Audio A-Series device."""
 
-    SOCKET_TIMEOUT: float = 10.0
+    # A command to a silent speaker fails after about
+    # MAX_RETRIES * SOCKET_TIMEOUT + (MAX_RETRIES - 1) * RETRY_DELAY = 16 s.
+    SOCKET_TIMEOUT: float = 5.0
     KEEPALIVE_TIMEOUT: int = 30
     MAX_RETRIES: int = 3
     RETRY_DELAY: float = 0.5  # seconds between retries
@@ -74,6 +75,11 @@ class AdamAudioClient:
         self.description: str = ""
         self.serial: str = ""
         self.state = AdamAudioState()
+
+    @property
+    def consecutive_poll_failures(self) -> int:
+        """Return how many polls in a row have failed."""
+        return self._consecutive_poll_failures
 
     async def async_setup(self) -> bool:
         """Connect to the device and fetch metadata."""
@@ -131,10 +137,12 @@ class AdamAudioClient:
             return success
 
     def _note_reachable(self) -> None:
-        """Record successful contact with the device (poll or accepted SET).
+        """Record that the device answered (a poll or a read-back).
 
         Clears the poll-failure streak: the device demonstrably answered, so
         earlier dropped polls must not count towards the debounce threshold.
+        A successful UDP send proves nothing here: it succeeds even when
+        nothing is listening.
         """
         self._consecutive_poll_failures = 0
         self.available = True
@@ -172,17 +180,10 @@ class AdamAudioClient:
         self._device.drain()
 
         # Opportunistic keepalive
-        try:
-            now = time.monotonic()
-            if self._last_keepalive == 0.0 or (
-                now - self._last_keepalive > self.KEEPALIVE_TIMEOUT / 2
-            ):
-                self._device.send_keepalive(timeout_secs=5.0)
-                self._last_keepalive = now
-        except OSError:
-            # Drain any late-arriving keepalive response so it doesn't
-            # get read by the batch poll below.
-            self._device.drain()
+        if self._last_keepalive == 0.0 or (
+            time.monotonic() - self._last_keepalive > self.KEEPALIVE_TIMEOUT / 2
+        ):
+            self._send_keepalive()
 
         try:
             responses = self._device.get_full_state_pdus()
@@ -226,25 +227,31 @@ class AdamAudioClient:
             raise HomeAssistantError(f"Device at {self.host} is not connected")
         return self._device
 
-    def _ensure_keepalive(self) -> None:
-        """Send keepalive only if the session is truly stale (>30s)."""
+    def _send_keepalive(self) -> None:
+        """Send a keepalive without waiting for an acknowledgement.
+
+        A-Series speakers only acknowledge the first keepalive of a socket, so
+        waiting would block for the full timeout on every later one, holding
+        the lock against commands.  Reachability is proven by the GET replies;
+        a late acknowledgement is skipped by the handle matching.
+        """
         if self._device is None:
             return
+        try:
+            self._device.send_pdus([Keepalive(timeout=self.KEEPALIVE_TIMEOUT)])
+            self._last_keepalive = time.monotonic()
+        except OSError:
+            LOGGER.debug("Keepalive send failed for %s", self.host, exc_info=True)
+
+    def _ensure_keepalive(self) -> None:
+        """Send keepalive only if the session is truly stale (>30s)."""
         if time.monotonic() - self._last_keepalive > self.KEEPALIVE_TIMEOUT:
-            try:
-                self._device.send_keepalive(timeout_secs=1.0)
-                self._last_keepalive = time.monotonic()
-            except OSError:
-                pass
+            self._send_keepalive()
 
     def _run_set(self, fn: Callable, *args: Any) -> None:
         """Executor target for SET commands."""
         self._ensure_keepalive()
         fn(*args)
-
-    def _run_get(self, fn: Callable) -> Any:
-        """Executor target for GET (verification) commands."""
-        return fn()
 
     async def _async_send_with_retry(
         self,
@@ -271,7 +278,6 @@ class AdamAudioClient:
                     await self._hass.async_add_executor_job(
                         self._run_set, set_fn, *set_args
                     )
-                    self._note_reachable()
                 except OSError as err:
                     self.available = False
                     if attempt == self.MAX_RETRIES:
@@ -291,9 +297,8 @@ class AdamAudioClient:
                 if not send_failed:
                     # --- Verify ---
                     try:
-                        actual = await self._hass.async_add_executor_job(
-                            self._run_get, get_fn
-                        )
+                        actual = await self._hass.async_add_executor_job(get_fn)
+                        self._note_reachable()
                         if actual == expected_value:
                             return  # ✓ Verified
                         LOGGER.debug(
@@ -328,14 +333,13 @@ class AdamAudioClient:
             f"{self.MAX_RETRIES} attempts"
         )
 
-    # ── Legacy send (for commands without GET verification) ────────────────
+    # ── Send without read-back (for commands that have no matching GET) ──────
 
     async def _async_send(self, fn: Callable, *args: Any) -> None:
-        """Send a single SET command (no verification)."""
+        """Send a single command (no verification)."""
         async with self._lock:
             try:
                 await self._hass.async_add_executor_job(self._run_set, fn, *args)
-                self._note_reachable()
             except OSError as err:
                 self.available = False
                 LOGGER.error("Command to %s failed: %s", self.host, err)
@@ -424,3 +428,7 @@ class AdamAudioClient:
             value,
         )
         self.state.treble = value
+
+    async def async_identify(self) -> None:
+        """Blink the device's LED so it can be recognised."""
+        await self._async_send(self._dev.blink)

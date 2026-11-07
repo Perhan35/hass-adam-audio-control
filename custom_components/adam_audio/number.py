@@ -188,32 +188,36 @@ class AdamAudioGroupNumber(AdamAudioGroupEntity, NumberEntity):
         self._attr_native_step = desc.native_step
         self._attr_native_unit_of_measurement = desc.native_unit
 
+    def _active_coordinators(self) -> list[AdamAudioCoordinator]:
+        """Return the online speakers whose voicing allows this control.
+
+        Same rule as on a single speaker, where the control is unavailable in
+        any other voicing.
+        """
+        valid_voicings = self._desc.valid_voicings
+        return [
+            c
+            for c in self._coordinators()
+            if valid_voicings is None or c.client.state.voicing in valid_voicings
+        ]
+
     @property
     @override
     def available(self) -> bool:
-        """Return true if at least one speaker supports the voicing."""
-        if not super().available:
-            return False
-        if self._desc.valid_voicings is not None:
-            return any(
-                c.client.state.voicing in self._desc.valid_voicings
-                for c in self._coordinators()
-            )
-        return True
+        """Return true if at least one online speaker allows this control."""
+        return bool(self._active_coordinators())
 
     @property
     @override
-    def native_value(self) -> float:
-        """Return the average across all speakers."""
-        coordinators = self._coordinators()
-        if not coordinators:
-            return self._desc.native_min
-        values = [self._desc.state_getter(c.client.state) for c in coordinators]
-        return round(sum(values) / len(values), 1)
+    def native_value(self) -> float | None:
+        """Return the speakers' common value, or None if they differ."""
+        return self._common_value(self._desc.state_getter, self._active_coordinators())
 
     @override
     async def async_set_native_value(self, value: float) -> None:
-        """Set the value on all speakers."""
+        """Set the value on the speakers whose voicing allows this control."""
         if self._desc.native_step == 1.0:
             value = int(value)
-        await self._async_call_all(self._desc.setter_name, value)
+        await self._async_call_all(
+            self._desc.setter_name, value, coordinators=self._active_coordinators()
+        )

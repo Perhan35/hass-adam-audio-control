@@ -26,11 +26,15 @@ ENTITY_BASS = "bass"
 ENTITY_DESK = "desk"
 ENTITY_PRESENCE = "presence"
 ENTITY_TREBLE = "treble"
+ENTITY_IDENTIFY = "identify"
 
 # ── Group ────────────────────────────────────────────────────────────────────
 GROUP_DEVICE_ID = "group_all_speakers"
 GROUP_DEVICE_NAME = "All Speakers"
 SIGNAL_COORDINATORS_CHANGED = "adam_audio_coordinators_changed"
+
+# ── Repairs ──────────────────────────────────────────────────────────────────
+ISSUE_SERIAL_MISMATCH = "serial_mismatch"
 
 # ── Voicing ──────────────────────────────────────────────────────────────────
 VOICING_OPTIONS = ["Pure", "UNR", "Ext"]

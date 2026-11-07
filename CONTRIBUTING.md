@@ -110,7 +110,7 @@ pytest tests/ lib/tests/ -v
 To produce a Core-ready integration for submitting to `home-assistant/core`:
 
 ```bash
-python scripts/gen_core.py --lib-version 1.0.0
+python scripts/gen_core.py --lib-version 1.1.1
 ```
 
 This creates `build/core/` with the integration files (no cards, no vendored protocol code, Core manifest). See the script output for next steps.
@@ -132,10 +132,10 @@ python -m build lib/
 1. Bump `version` in [`lib/pyproject.toml`](lib/pyproject.toml) (PyPI rejects re-uploads of an existing version).
 2. Tag and push:
    ```bash
-   git tag lib-v1.0.0
-   git push origin lib-v1.0.0
+   git tag lib-v1.1.1
+   git push origin lib-v1.1.1
    ```
-3. GitHub Actions (`publish-lib.yml`) builds and uploads automatically.
+3. GitHub Actions (`publish-lib.yml`) runs the tests, checks the tag matches the version, then builds and uploads.
 4. Verify at [pypi.org/project/pyadamaudiocontroller/](https://pypi.org/project/pyadamaudiocontroller/) (~1 min).
 
 ---
@@ -144,7 +144,7 @@ python -m build lib/
 
 | Tag | What happens |
 |-----|--------------|
-| `v*` (e.g., `v0.3.0`) | HACS GitHub release + PyPI library publish |
-| `lib-v*` (e.g., `lib-v1.0.0`) | PyPI library publish only |
+| `v*` (e.g., `v0.5.0`) | Tests, tag/manifest version check, then HACS GitHub release |
+| `lib-v*` (e.g., `lib-v1.1.1`) | Tests, tag/library version check, then PyPI library publish |
 
 Always publish the library before or alongside the integration release.

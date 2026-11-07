@@ -25,15 +25,24 @@ Controls each speaker individually and provides a virtual **All Speakers** group
 | Desk | `number` | Adjust desk correction (−2 to 0) |
 | Presence | `number` | Adjust presence (−1 to +1) |
 | Treble | `number` | Adjust treble shelf (−1 to +1) |
+| Identify | `button` | Blink the speaker's LED to recognise it (each speaker only, not the group) |
 
 Auto-discovery via **mDNS** (`_oca._udp.local.`) with **manual IP fallback**.
+
+The address of a speaker can be changed later with **Reconfigure**, and **Download diagnostics** gives you a report to attach to a bug (IP address, serial number and hardware name are hidden).
+
+### How the All Speakers group behaves
+
+- **Settings that differ:** when the speakers don't have the same input, voicing or EQ value, the group shows **unknown** instead of one speaker's value. Choosing a value applies it to the speakers and aligns them.
+- **Ext voicing:** EQ controls are disabled in Ext voicing. The group leaves out speakers in Ext voicing, and its EQ controls are unavailable when all speakers are in it.
+- **Offline speakers:** the group ignores them, for both state and commands.
 
 ---
 
 ## Screenshots
 
 ![Integration overview](screenshots/integration.png)
-*Integration page showing 3 devices (Left, Right, All Speakers) and 24 entities*
+*Integration page showing 3 devices (Left, Right, All Speakers)*
 
 ![Device controls](screenshots/controls.png)
 *Per-device control panel — EQ, input source, voicing, mute and sleep*
@@ -129,7 +138,7 @@ All cards use the **same configuration schema**, so you can switch between them 
 
 - `custom:adam-audio-card`
 - `custom:adam-audio-backplate-card`
-- `custom:adam-audio-backplate-card-alt` (coming soon)
+- `custom:adam-audio-backplate-card-alt`
 
 ### ADAM Audio Card (`custom:adam-audio-card`)
 
@@ -172,7 +181,11 @@ entities:
   treble:   number.left_treble
 ```
 
-### All Speakers Group (exemple with Backplate Card Alternative)
+### ADAM Audio Backplate Card Alternative (`custom:adam-audio-backplate-card-alt`)
+
+An alternative take on the physical backplate, using the same configuration as the other cards.
+
+### All Speakers Group (example with Backplate Card Alternative)
 
 All cards work with the **All Speakers** group entities (prefixed `all_speakers_`):
 
@@ -197,29 +210,30 @@ entities:
 ## Automations examples
 
 ```yaml
-# Mute both speakers when Sonos starts playing
 automation:
-  trigger:
-    - platform: state
-      entity_id: media_player.sonos
-      to: playing
-  action:
-    - service: switch.turn_on
-      target:
-        entity_id: switch.all_speakers_mute
+  # Mute both speakers when Sonos starts playing
+  - alias: Mute monitors when Sonos plays
+    triggers:
+      - trigger: state
+        entity_id: media_player.sonos
+        to: playing
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.all_speakers_mute
 
-# Wake speakers at 9:00 AM on weekdays
-automation:
-  trigger:
-    - platform: time
-      at: "09:00:00"
-  condition:
-    - condition: time
-      weekday: [mon, tue, wed, thu, fri]
-  action:
-    - service: switch.turn_off
-      target:
-        entity_id: switch.all_speakers_sleep
+  # Wake speakers at 9:00 AM on weekdays
+  - alias: Wake monitors on weekdays
+    triggers:
+      - trigger: time
+        at: "09:00:00"
+    conditions:
+      - condition: time
+        weekday: [mon, tue, wed, thu, fri]
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.all_speakers_sleep
 ```
 
 ---
@@ -240,9 +254,11 @@ This library (`lib/pyadamaudiocontroller/`) handles all low-level UDP communicat
 
 Communication uses the **AES70/OCA protocol over UDP** — the same protocol used by ADAM Audio's official *A Control* app. No audio data is sent over the network; this integration is control-only.
 
-State is tracked **optimistically**: the integration records what it has set and assumes the speaker accepted it. There is no read-back for most parameters in the OCA implementation the speakers expose. This means if you change settings via the physical knob or the A Control app, HA won't know until you restart or reload the integration.
+The integration **polls** each speaker every 15 seconds, so changes made with the physical knob or the A Control app appear in Home Assistant within one poll.
 
-A **keepalive** is sent every 25 seconds to maintain the OCA session.
+Each command is **read back** to confirm the speaker applied it, and sent up to 3 times if not. If a speaker doesn't answer at all, the command fails with an error after about 16 seconds. A speaker becomes unavailable after 2 failed polls in a row.
+
+A **keepalive** is sent with the polls to maintain the OCA session.
 
 ---
 
@@ -255,8 +271,11 @@ A **keepalive** is sent every 25 seconds to maintain the OCA session.
 | Symptom | Fix |
 |---|---|
 | Speaker not discovered | Check the speaker is on the same network/VLAN as HA. Try the manual IP method. |
-| Entities show Unavailable | Speaker may be in deep sleep mode. Try the manual IP fallback; the integration retries on the next poll cycle. |
-| State doesn't reflect knob changes | Expected — state is optimistic and takes some time to update. Reload the integration entry to reset to defaults (if wanted/needed). |
+| Entities show Unavailable | Check the speaker is powered on and reachable. Speakers may also be in deep sleep mode. The integration retries on the next poll cycle. |
+| Speaker's IP address changed | It is usually corrected automatically when the speaker is discovered again. Otherwise use **Reconfigure** on the integration entry. |
+| Repair issue: a different speaker answers | Your router gave this address to another speaker. Use **Reconfigure** to enter the right address. To really replace a speaker, remove it and add the new one: Reconfigure refuses a different speaker. |
+| A group entity shows Unknown | The speakers have different values. Choose a value on the group to align them. |
+| State doesn't reflect knob changes | Wait for the next poll (up to 15 seconds). |
 | Commands stop working | Unload and reload the integration entry to reset the OCA session. |
 | A Control app overrode my settings | Opening the A Control app resets commands to those sent by A Control. Close A Control to regain control from Home Assistant. |
 
@@ -282,19 +301,9 @@ More info, see [CONTRIBUTING.md#repository-structure](CONTRIBUTING.md#repository
 
 ---
 
-## TODO
+## Roadmap
 
-- [x] **Add translation support**
-- [x] **Full test suite**: Add tests for all entity platforms, group entity logic, and coordinator update cycle.
-- [x] **Fix auto-discovery**: zeroconf auto-discovery doesn't seem to work all the time
-- [x] **Add support for more ADAM Audio speaker models**: tested with A4V only
-- [x] **Propose this integration to HACS**
-- [x] **Extract protocol library to PyPI** (`pyadamaudiocontroller`)
-- [x] **Propose this integration to Home Assistant Core**: ongoing
-- [x] **Enhance connectivity and error handling**:
-  - [x] add retry logic,
-  - [x] implement a proper keepalive mechanism,
-  - [x] better error messages
+See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
